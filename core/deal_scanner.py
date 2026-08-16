@@ -18,7 +18,7 @@ class ScanCandidate:
 
 
 class DealScanner:
-    """Offline-first scanner that turns matched marketplace offers into deals."""
+    """Offline-first scanner for matched marketplace product/offer pairs."""
 
     MIN_CONFIDENCE = 95.0
 
@@ -27,13 +27,13 @@ class DealScanner:
         cls,
         product: Product,
         amazon: MarketOffer,
-        ebay_offers: Iterable[MarketOffer],
+        ebay_candidates: Iterable[tuple[Product, MarketOffer]],
         ebay_fee_percent: float,
         packaging_cost: float = 0.0,
     ) -> list[ScanCandidate]:
         candidates: list[ScanCandidate] = []
-        for ebay in ebay_offers:
-            match = ProductMatcher.match(product, product)
+        for ebay_product, ebay in ebay_candidates:
+            match = ProductMatcher.match(product, ebay_product)
             if match.confidence < cls.MIN_CONFIDENCE:
                 continue
             deal = ProfitEngine.calculate(
