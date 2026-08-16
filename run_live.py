@@ -11,22 +11,25 @@ from core.live_deal_service import LiveDealConfig, LiveDealService
 from core.notifiers import TelegramNotifier
 from core.state_store import JsonStateStore
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-)
+
+def _read_queries() -> list[str]:
+    raw = os.getenv("PROFITPILOT_QUERIES", "")
+    if raw.strip():
+        return [item.strip() for item in raw.split(",") if item.strip()]
+    single = os.getenv("PROFITPILOT_QUERY", "").strip()
+    return [single] if single else []
 
 
 def build_live_runner() -> AutoRunner | None:
-    """Build the real Amazon->eBay runner when all required credentials exist."""
     notifier = TelegramNotifier()
     if not notifier.configured:
         return None
-
     amazon_config = AmazonCreatorsConfig.from_env()
     ebay_config = EbayBrowseConfig.from_env()
-    if amazon_config is None or ebay_config is None:
+    queries = _read_queries()
+    if amazon_config is None or ebay_config is None or not queries:
         return None
 
     amazon = AmazonCreatorsConnector(amazon_config)
@@ -43,14 +46,18 @@ def build_live_runner() -> AutoRunner | None:
 
     interval = float(os.getenv("PROFITPILOT_INTERVAL_SECONDS", "900"))
     state_path = os.getenv("PROFITPILOT_STATE_FILE", "data/alert_state.json")
-    query = os.getenv("PROFITPILOT_QUERY", "")
-
     store = JsonStateStore(state_path)
     monitor = AlertMonitor()
     monitor.seen.update(store.load())
 
+    def scan():
+        results = []
+        for query in queries:
+            results.extend(service.scan(query))
+        return sorted(results, key=lambda item: (item.deal.profit, item.deal.roi), reverse=True)
+
     return AutoRunner(
-        lambda: service.scan(query),
+        scan,
         notifier,
         monitor=monitor,
         config=RunnerConfig(interval_seconds=interval),
@@ -61,9 +68,9 @@ def main() -> None:
     runner = build_live_runner()
     if runner is None:
         raise SystemExit(
-            "Live-Betrieb nicht konfiguriert. Benötigt Telegram-, Amazon- und eBay-Zugangsdaten."
+            "Live-Betrieb nicht konfiguriert. Benötigt Telegram-, Amazon-, eBay-Zugangsdaten "
+            "und PROFITPILOT_QUERY/PROFITPILOT_QUERIES."
         )
-
     try:
         runner.run()
     finally:
