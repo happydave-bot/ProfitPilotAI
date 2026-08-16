@@ -70,16 +70,6 @@ class ProductMatcher:
 
         weighted = title_score * 0.55 + brand_score * 0.25 + model_score * 0.20
 
-        if brand_score >= 99:
-            reasons.append("Marke stimmt überein")
-        if model_score >= 99:
-            reasons.append("Modell stimmt überein")
-        if title_score >= 85:
-            reasons.append("Produkttitel ist sehr ähnlich")
-
-        # An exact brand plus strong shared title vocabulary is sufficient
-        # when no EAN/ASIN is available. This catches common marketplace
-        # title variations such as added edition/marketing words.
         title_tokens_left = set(cls._norm(left.title).split())
         title_tokens_right = set(cls._norm(right.title).split())
         shared_ratio = (
@@ -90,8 +80,15 @@ class ProductMatcher:
         )
         strong_brand_title_match = brand_score >= 99 and shared_ratio >= 0.60
 
-        matched = weighted >= cls.MIN_MATCH or strong_brand_title_match
-        if strong_brand_title_match and "Produkttitel enthält die wesentlichen gemeinsamen Produktbegriffe" not in reasons:
+        if brand_score >= 99:
+            reasons.append("Marke stimmt überein")
+        if model_score >= 99:
+            reasons.append("Modell stimmt überein")
+        if title_score >= 85:
+            reasons.append("Produkttitel ist sehr ähnlich")
+        if strong_brand_title_match:
             reasons.append("Produkttitel enthält die wesentlichen gemeinsamen Produktbegriffe")
 
-        return MatchResult(round(weighted, 2), matched, tuple(reasons))
+        matched = weighted >= cls.MIN_MATCH or strong_brand_title_match
+        confidence = max(weighted, 95.0) if strong_brand_title_match else weighted
+        return MatchResult(round(confidence, 2), matched, tuple(reasons))
