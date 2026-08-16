@@ -39,6 +39,18 @@ class ProductMatcher:
         return SequenceMatcher(None, left, right).ratio() * 100
 
     @classmethod
+    def _title_similarity(cls, left: str, right: str) -> float:
+        left_norm = cls._norm(left)
+        right_norm = cls._norm(right)
+        sequence_score = cls._similarity(left_norm, right_norm)
+        left_tokens = set(left_norm.split())
+        right_tokens = set(right_norm.split())
+        if not left_tokens or not right_tokens:
+            return sequence_score
+        overlap = len(left_tokens & right_tokens) / len(left_tokens | right_tokens) * 100
+        return max(sequence_score, overlap)
+
+    @classmethod
     def match(cls, left: Product, right: Product) -> MatchResult:
         reasons: list[str] = []
 
@@ -52,7 +64,7 @@ class ProductMatcher:
                 return MatchResult(100.0, True, ("ASIN stimmt überein",))
             return MatchResult(0.0, False, ("ASIN stimmt nicht überein",))
 
-        title_score = cls._similarity(left.title, right.title)
+        title_score = cls._title_similarity(left.title, right.title)
         brand_score = cls._similarity(left.brand, right.brand) if left.brand and right.brand else 0.0
         model_score = cls._similarity(left.model, right.model) if left.model and right.model else 0.0
 
