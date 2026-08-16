@@ -26,7 +26,7 @@ def test_runner_continues_when_notifier_fails():
             raise RuntimeError("network")
 
     runner = AutoRunner(lambda: [candidate()], BrokenNotifier(), sleep=lambda _: None)
-    assert len(runner.run(max_cycles=2)) == 2
+    assert runner.run(max_cycles=2) == 2
 
 
 def test_runner_rejects_invalid_interval():
