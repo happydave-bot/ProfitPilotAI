@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 
@@ -8,10 +9,23 @@ from connectors.ebay_browse import EbayBrowseConfig, EbayBrowseConnector
 from core.alert_monitor import AlertMonitor
 from core.auto_runner import AutoRunner, RunnerConfig
 from core.live_deal_service import LiveDealConfig, LiveDealService
-from core.notifiers import TelegramNotifier
+from core.notifiers import Notifier, TelegramNotifier
 from core.state_store import JsonStateStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+
+
+class DryRunNotifier:
+    """Notifier used for a safe one-cycle live connectivity test."""
+
+    configured = True
+
+    def __init__(self) -> None:
+        self.messages: list[str] = []
+
+    def send(self, message: str) -> None:
+        self.messages.append(message)
+        logging.info("DRY RUN - würde senden:\n%s", message)
 
 
 def _read_queries() -> list[str]:
@@ -22,8 +36,8 @@ def _read_queries() -> list[str]:
     return [single] if single else []
 
 
-def build_live_runner() -> AutoRunner | None:
-    notifier = TelegramNotifier()
+def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
+    notifier: Notifier = DryRunNotifier() if dry_run else TelegramNotifier()
     if not notifier.configured:
         return None
     amazon_config = AmazonCreatorsConfig.from_env()
@@ -61,18 +75,37 @@ def build_live_runner() -> AutoRunner | None:
         notifier,
         monitor=monitor,
         config=RunnerConfig(interval_seconds=interval),
+        state_store=store,
     )
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="ProfitPilotAI Live Runner")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="genau einen Scan durchführen und danach beenden",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="einen sicheren Test ohne Telegram-Versand durchführen",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    runner = build_live_runner()
+    args = _parse_args()
+    dry_run = args.dry_run or os.getenv("PROFITPILOT_DRY_RUN", "").lower() in {"1", "true", "yes"}
+    runner = build_live_runner(dry_run=dry_run)
     if runner is None:
         raise SystemExit(
-            "Live-Betrieb nicht konfiguriert. Benötigt Telegram-, Amazon-, eBay-Zugangsdaten "
-            "und PROFITPILOT_QUERY/PROFITPILOT_QUERIES."
+            "Live-Betrieb nicht konfiguriert. Benötigt Amazon-, eBay-Zugangsdaten "
+            "und PROFITPILOT_QUERY/PROFITPILOT_QUERIES. Für normalen Betrieb zusätzlich Telegram."
         )
+
     try:
-        runner.run()
+        runner.run(max_cycles=1 if args.once else None)
     finally:
         state_path = os.getenv("PROFITPILOT_STATE_FILE", "data/alert_state.json")
         JsonStateStore(state_path).save(runner.monitor.seen)
