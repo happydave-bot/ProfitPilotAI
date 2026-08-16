@@ -7,12 +7,12 @@ def product(title, ean):
 
 
 def amazon_for(p):
-    prices = {"111": 40.0, "222": 50.0, "333": 70.0}
+    prices = {"111": 40.0, "222": 50.0, "333": 40.0}
     return MarketOffer(source="amazon", url="https://amazon.example", price=prices[p.ean])
 
 
 def ebay_for(p):
-    prices = {"111": 80.0, "222": 90.0, "333": 75.0}
+    prices = {"111": 80.0, "222": 100.0, "333": 75.0}
     return [(p, MarketOffer(source="ebay", url="https://ebay.example", price=prices[p.ean]))]
 
 
