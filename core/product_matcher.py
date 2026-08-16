@@ -77,5 +77,21 @@ class ProductMatcher:
         if title_score >= 85:
             reasons.append("Produkttitel ist sehr ähnlich")
 
-        matched = weighted >= cls.MIN_MATCH
+        # An exact brand plus strong shared title vocabulary is sufficient
+        # when no EAN/ASIN is available. This catches common marketplace
+        # title variations such as added edition/marketing words.
+        title_tokens_left = set(cls._norm(left.title).split())
+        title_tokens_right = set(cls._norm(right.title).split())
+        shared_ratio = (
+            len(title_tokens_left & title_tokens_right)
+            / len(title_tokens_left | title_tokens_right)
+            if title_tokens_left and title_tokens_right
+            else 0.0
+        )
+        strong_brand_title_match = brand_score >= 99 and shared_ratio >= 0.60
+
+        matched = weighted >= cls.MIN_MATCH or strong_brand_title_match
+        if strong_brand_title_match and "Produkttitel enthält die wesentlichen gemeinsamen Produktbegriffe" not in reasons:
+            reasons.append("Produkttitel enthält die wesentlichen gemeinsamen Produktbegriffe")
+
         return MatchResult(round(weighted, 2), matched, tuple(reasons))
