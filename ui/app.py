@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from core.models import MarketOffer, Product
 from core.deal_scanner import DealScanner
-from connectors.market_data import MarketListing
+from core.models import MarketOffer, Product
 from ui.dashboard import render_deals
+
+
+def run() -> None:
+    """Run the local ProfitPilotAI demo application."""
+    print("ProfitPilotAI Dashboard")
+    print("=" * 24)
+    print(run_demo())
 
 
 def run_demo() -> str:
@@ -23,6 +29,4 @@ def run_demo() -> str:
 
 
 if __name__ == "__main__":
-    print("ProfitPilotAI Dashboard")
-    print("=" * 24)
-    print(run_demo())
+    run()
