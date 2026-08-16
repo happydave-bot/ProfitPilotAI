@@ -15,12 +15,15 @@ class MatchResult:
 
     @property
     def is_match(self) -> bool:
-        """Backward-compatible, readable alias for matched."""
         return self.matched
+
+    @property
+    def confidence(self) -> float:
+        return self.score
 
 
 class ProductMatcher:
-    MIN_MATCH = 80.0
+    MIN_MATCH = 70.0
 
     @staticmethod
     def _norm(value: str | None) -> str:
@@ -31,8 +34,6 @@ class ProductMatcher:
 
     @classmethod
     def _similarity(cls, left: str, right: str) -> float:
-        left = cls._norm(left)
-        right = cls._norm(right)
         if not left or not right:
             return 0.0
         return SequenceMatcher(None, left, right).ratio() * 100
@@ -61,7 +62,7 @@ class ProductMatcher:
             reasons.append("Marke stimmt überein")
         if model_score >= 99:
             reasons.append("Modell stimmt überein")
-        if title_score >= 90:
+        if title_score >= 85:
             reasons.append("Produkttitel ist sehr ähnlich")
 
         matched = weighted >= cls.MIN_MATCH
