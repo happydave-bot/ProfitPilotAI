@@ -13,9 +13,14 @@ class MatchResult:
     matched: bool
     reasons: tuple[str, ...]
 
+    @property
+    def is_match(self) -> bool:
+        """Backward-compatible, readable alias for matched."""
+        return self.matched
+
 
 class ProductMatcher:
-    MIN_MATCH = 95.0
+    MIN_MATCH = 80.0
 
     @staticmethod
     def _norm(value: str | None) -> str:
@@ -26,6 +31,8 @@ class ProductMatcher:
 
     @classmethod
     def _similarity(cls, left: str, right: str) -> float:
+        left = cls._norm(left)
+        right = cls._norm(right)
         if not left or not right:
             return 0.0
         return SequenceMatcher(None, left, right).ratio() * 100
