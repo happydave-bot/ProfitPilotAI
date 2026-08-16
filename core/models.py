@@ -23,6 +23,11 @@ class MarketOffer:
     url: str
     price: float
     shipping: float = 0.0
+    seller: str = ""
+    competition_count: int | None = None
+    price_trend_percent: float | None = None
+    demand_score: float | None = None
+    return_rate_percent: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
