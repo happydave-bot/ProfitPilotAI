@@ -53,6 +53,8 @@ class ProductMatcher:
     @classmethod
     def match(cls, left: Product, right: Product) -> MatchResult:
         reasons: list[str] = []
+        left_title = cls._norm(left.title)
+        right_title = cls._norm(right.title)
 
         if left.ean and right.ean:
             if cls._norm(left.ean) == cls._norm(right.ean):
@@ -64,14 +66,17 @@ class ProductMatcher:
                 return MatchResult(100.0, True, ("ASIN stimmt überein",))
             return MatchResult(0.0, False, ("ASIN stimmt nicht überein",))
 
+        if left_title and left_title == right_title:
+            return MatchResult(100.0, True, ("Produkttitel stimmt exakt überein",))
+
         title_score = cls._title_similarity(left.title, right.title)
         brand_score = cls._similarity(left.brand, right.brand) if left.brand and right.brand else 0.0
         model_score = cls._similarity(left.model, right.model) if left.model and right.model else 0.0
 
         weighted = title_score * 0.55 + brand_score * 0.25 + model_score * 0.20
 
-        title_tokens_left = set(cls._norm(left.title).split())
-        title_tokens_right = set(cls._norm(right.title).split())
+        title_tokens_left = set(left_title.split())
+        title_tokens_right = set(right_title.split())
         shared_ratio = (
             len(title_tokens_left & title_tokens_right)
             / len(title_tokens_left | title_tokens_right)
