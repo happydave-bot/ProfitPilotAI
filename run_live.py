@@ -9,6 +9,7 @@ from connectors.ebay_browse import EbayBrowseConfig, EbayBrowseConnector
 from core.alert_monitor import AlertMonitor
 from core.auto_runner import AutoRunner, RunnerConfig
 from core.live_deal_service import LiveDealConfig, LiveDealService
+from core.live_preflight import validate_live_environment
 from core.notifiers import Notifier, TelegramNotifier
 from core.state_store import JsonStateStore
 
@@ -67,7 +68,10 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
     def scan():
         results = []
         for query in queries:
-            results.extend(service.scan(query))
+            logging.info("LIVE SCAN | %s", query)
+            found = service.scan(query)
+            logging.info("LIVE RESULT | %s | %d profitable matches", query, len(found))
+            results.extend(found)
         return sorted(results, key=lambda item: (item.deal.profit, item.deal.roi), reverse=True)
 
     return AutoRunner(
@@ -91,11 +95,21 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="einen sicheren Test ohne Telegram-Versand durchführen",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="nur Konfiguration prüfen; keine Netzwerk- oder Telegram-Anfragen",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
+    if args.check:
+        result = validate_live_environment()
+        print(result.summary())
+        raise SystemExit(0 if result.ok else 2)
+
     dry_run = args.dry_run or os.getenv("PROFITPILOT_DRY_RUN", "").lower() in {"1", "true", "yes"}
     runner = build_live_runner(dry_run=dry_run)
     if runner is None:
