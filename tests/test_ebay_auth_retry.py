@@ -309,3 +309,69 @@ def test_ebay_config_reads_max_retries_from_env(monkeypatch):
 
     assert config is not None
     assert config.max_retries == 2
+
+
+def test_ebay_oauth_retries_once_after_server_error(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+        return Response({"access_token": "fresh-token"})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector._access_token() == "fresh-token"
+    assert len(calls) == 2
+    assert connector._token == "fresh-token"
+
+
+def test_ebay_oauth_honors_retry_after_header(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    delays = []
+    calls = []
+
+    def fake_sleep(delay):
+        delays.append(delay)
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise HTTPError(
+                req.full_url,
+                429,
+                "Too Many Requests",
+                {"Retry-After": "1.5"},
+                None,
+            )
+        return Response({"access_token": "fresh-token"})
+
+    monkeypatch.setattr("connectors.ebay_browse.time.sleep", fake_sleep)
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector._access_token() == "fresh-token"
+    assert delays == [1.5]
+    assert len(calls) == 2
+
+
+def test_ebay_oauth_does_not_retry_client_error(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.full_url)
+        raise HTTPError(req.full_url, 400, "Bad Request", {}, None)
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    try:
+        connector._access_token()
+    except RuntimeError as exc:
+        assert "eBay OAuth" in str(exc)
+        assert "HTTP Error 400" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+    assert calls == ["https://api.ebay.com/identity/v1/oauth2/token"]
