@@ -107,7 +107,7 @@ def test_deduplicates_repeated_ebay_offer_urls():
     results = service.scan("Bosch Akkuschrauber")
 
     assert len(results) == 1
-    assert results[0].offer.url == "https://ebay.example/p"
+    assert results[0].ebay.url == "https://ebay.example/p"
 
 
 def test_includes_ebay_shipping_in_real_profit():
