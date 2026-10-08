@@ -116,27 +116,34 @@ class EbayBrowseConnector:
             with request.urlopen(req, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode("utf-8"))
         except error.HTTPError as exc:
-            if exc.code != 401 or self._token is None:
+            if exc.code == 401 and self._token is not None:
+                self._token = None
+                token = self._access_token()
+                req = request.Request(
+                    f"{self.base_url}/buy/browse/v1/item_summary/search?{params}",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept-Language": self.config.locale,
+                        "X-EBAY-C-MARKETPLACE-ID": self.config.marketplace_id,
+                    },
+                    method="GET",
+                )
+                try:
+                    with request.urlopen(req, timeout=self.timeout) as response:
+                        data = json.loads(response.read().decode("utf-8"))
+                except Exception as retry_exc:
+                    self._token = None
+                    raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
+            elif exc.code == 429 or 500 <= exc.code <= 599:
+                try:
+                    with request.urlopen(req, timeout=self.timeout) as response:
+                        data = json.loads(response.read().decode("utf-8"))
+                except Exception as retry_exc:
+                    self._token = None
+                    raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
+            else:
                 self._token = None
                 raise RuntimeError(f"eBay Browse API: {exc}") from exc
-
-            self._token = None
-            token = self._access_token()
-            req = request.Request(
-                f"{self.base_url}/buy/browse/v1/item_summary/search?{params}",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept-Language": self.config.locale,
-                    "X-EBAY-C-MARKETPLACE-ID": self.config.marketplace_id,
-                },
-                method="GET",
-            )
-            try:
-                with request.urlopen(req, timeout=self.timeout) as response:
-                    data = json.loads(response.read().decode("utf-8"))
-            except Exception as retry_exc:
-                self._token = None
-                raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
         except Exception as exc:
             self._token = None
             raise RuntimeError(f"eBay Browse API: {exc}") from exc
