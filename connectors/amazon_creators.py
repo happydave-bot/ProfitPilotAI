@@ -132,16 +132,18 @@ class AmazonCreatorsConnector:
             part_number_value = (manufacture.get("itemPartNumber") or {}).get("displayValue")
             model = str(model_value or part_number_value or "").strip() or None
             listings = ((item.get("offersV2") or {}).get("listings") or [])
-            priced = [entry for entry in listings if ((entry.get("price") or {}).get("money") or {}).get("amount") is not None]
+            priced: list[tuple[float, dict]] = []
+            for entry in listings:
+                money = (entry.get("price") or {}).get("money") or {}
+                try:
+                    amount = float(money["amount"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                priced.append((amount, entry))
             if not priced:
                 continue
-            first = priced[0]
-            money = (first.get("price") or {}).get("money") or {}
-            try:
-                price = float(money["amount"])
-            except (KeyError, TypeError, ValueError):
-                continue
-            merchant = (first.get("merchantInfo") or {}).get("name") or ""
+            price, selected = min(priced, key=lambda pair: pair[0])
+            merchant = (selected.get("merchantInfo") or {}).get("name") or ""
             product = Product(title=title, brand=brand, asin=str(asin), ean=ean, model=model)
             detail_url = str(item.get("detailPageURL") or "").strip()
             offer = MarketOffer(source="amazon", url=detail_url or f"https://www.amazon.de/dp/{asin}", price=price, seller=str(merchant))
