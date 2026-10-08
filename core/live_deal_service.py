@@ -66,7 +66,13 @@ class LiveDealService:
                 continue
 
             deals: list[ScanCandidate] = []
+            seen_offer_urls: set[str] = set()
             for index, ebay_listing in enumerate(ebay_listings):
+                offer_url = str(ebay_listing.offer.url or "").strip()
+                if offer_url and offer_url in seen_offer_urls:
+                    continue
+                if offer_url:
+                    seen_offer_urls.add(offer_url)
                 try:
                     ebay_candidates = [(ebay_listing.product, ebay_listing.offer)]
                     deals.extend(
