@@ -216,3 +216,62 @@ def test_ebay_search_skips_listing_with_only_invalid_shipping_costs(monkeypatch)
 
     assert len(results) == 1
     assert results[0].offer.shipping == 4.99
+
+
+def test_ebay_search_skips_auction_only_listing(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [
+                {
+                    "title": "Bosch GSR Auktion",
+                    "price": {"value": "49.99"},
+                    "itemWebUrl": "https://ebay.example/auction",
+                    "buyingOptions": ["AUCTION"],
+                    "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+                },
+                {
+                    "title": "Bosch GSR Sofort-Kaufen",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://ebay.example/fixed",
+                    "buyingOptions": ["FIXED_PRICE"],
+                    "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+                },
+            ]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.url == "https://ebay.example/fixed"
+
+
+def test_ebay_search_keeps_listing_when_buying_options_are_missing(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [{
+                "title": "Bosch GSR ohne BuyingOptions",
+                "price": {"value": "79.99"},
+                "itemWebUrl": "https://ebay.example/item/1",
+                "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+            }]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
