@@ -126,18 +126,24 @@ class EbayBrowseConnector:
 
         results: list[MarketListing] = []
         total_results = data.get("total")
-        try:
-            parsed_total = int(total_results) if total_results is not None else None
-        except (TypeError, ValueError):
+        if isinstance(total_results, bool):
             parsed_total = None
+        else:
+            try:
+                parsed_total = int(total_results) if total_results is not None else None
+            except (TypeError, ValueError):
+                parsed_total = None
         competition_count = parsed_total if parsed_total is not None and parsed_total >= 0 else None
 
         for item in raw_item_summaries:
             if not isinstance(item, dict):
                 continue
+            raw_price = (item.get("price") or {}).get("value")
+            if isinstance(raw_price, bool):
+                continue
             try:
-                price = float((item.get("price") or {})["value"])
-            except (KeyError, TypeError, ValueError):
+                price = float(raw_price)
+            except (TypeError, ValueError):
                 continue
             if not math.isfinite(price) or price <= 0:
                 continue
@@ -172,6 +178,8 @@ class EbayBrowseConnector:
                 if not isinstance(option, dict):
                     continue
                 raw_cost = (option.get("shippingCost") or {}).get("value")
+                if isinstance(raw_cost, bool):
+                    continue
                 try:
                     cost = float(raw_cost)
                 except (TypeError, ValueError):
