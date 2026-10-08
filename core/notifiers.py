@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import os
 from dataclasses import dataclass
@@ -56,6 +57,12 @@ class TelegramNotifier(Notifier):
             with request.urlopen(request.Request(url, data=payload, method="POST"), timeout=self.timeout) as response:
                 if response.status != 200:
                     raise NotificationError(f"Telegram HTTP {response.status}")
+                try:
+                    body = json.loads(response.read().decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise NotificationError("Ungültige Telegram-Antwort") from exc
+                if body.get("ok") is not True:
+                    raise NotificationError("Telegram hat den Versand abgelehnt")
         except Exception as exc:
             if isinstance(exc, NotificationError):
                 raise
