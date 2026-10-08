@@ -36,3 +36,16 @@ def test_live_pipeline_ignores_unmatched_ebay_product():
     results = LiveMarketPipeline(amazon, ebay).scan("Bosch Akkuschrauber")
 
     assert results == []
+
+
+
+def test_live_pipeline_accepts_ecommerce_identifiers_from_ebay_listing():
+    amazon_product = Product(title="Bosch GSR 18V-65", brand="Bosch", ean="4000000000001", model="06019N0E2B")
+    ebay_product = Product(title="Bosch GSR 18V-65", brand="Bosch", ean="4000000000001", model="06019N0E2B")
+    amazon = FakeConnector([MarketListing(amazon_product, MarketOffer("amazon", "https://a", 40.0))])
+    ebay = FakeConnector([MarketListing(ebay_product, MarketOffer("ebay", "https://e", 85.0))])
+
+    results = LiveMarketPipeline(amazon, ebay).scan("Bosch GSR 18V-65")
+
+    assert len(results) == 1
+    assert results[0].deals[0].match_confidence == 100.0
