@@ -39,3 +39,48 @@ def test_telegram_rejects_message_over_4096_characters(monkeypatch):
     notifier = TelegramNotifier(token="secret", chat_id="123")
     with pytest.raises(NotificationError, match="4096"):
         notifier.send("x" * 4097)
+
+
+def test_telegram_rejects_api_error_response(monkeypatch):
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"ok": false, "description": "Bad Request"}'
+
+    def fake_urlopen(*args, **kwargs):
+        return FakeResponse()
+
+    monkeypatch.setattr("core.notifiers.request.urlopen", fake_urlopen)
+    notifier = TelegramNotifier(token="secret", chat_id="123")
+
+    with pytest.raises(NotificationError, match="abgelehnt"):
+        notifier.send("test")
+
+
+def test_telegram_accepts_success_response(monkeypatch):
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"ok": true, "result": {"message_id": 1}}'
+
+    def fake_urlopen(*args, **kwargs):
+        return FakeResponse()
+
+    monkeypatch.setattr("core.notifiers.request.urlopen", fake_urlopen)
+    notifier = TelegramNotifier(token="secret", chat_id="123")
+
+    notifier.send("test")
