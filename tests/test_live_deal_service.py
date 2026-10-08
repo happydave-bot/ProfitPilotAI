@@ -158,7 +158,7 @@ def test_ebay_query_errors_do_not_crash_scan_when_all_queries_fail(caplog):
         results = service.scan("Bosch Akkuschrauber")
 
     assert results == []
-    assert caplog.text.count("eBay-Suche fehlgeschlagen") == 1
+    assert caplog.text.count("eBay-Suche fehlgeschlagen") == 2
 
 
 def test_live_deal_config_accepts_valid_values():
