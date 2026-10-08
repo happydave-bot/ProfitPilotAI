@@ -51,8 +51,12 @@ class EbayBrowseConnector:
     """Production eBay Browse API adapter using application OAuth."""
 
     def __init__(self, config: EbayBrowseConfig, timeout: float = 15.0):
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+            raise ValueError("eBay timeout must be a number")
+        if not math.isfinite(float(timeout)) or timeout <= 0:
+            raise ValueError("eBay timeout must be greater than zero")
         self.config = config
-        self.timeout = timeout
+        self.timeout = float(timeout)
         self._token: str | None = None
 
     @property
