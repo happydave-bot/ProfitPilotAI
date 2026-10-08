@@ -189,6 +189,45 @@ def test_ebay_search_skips_listing_without_actionable_url(monkeypatch):
     assert results[0].offer.url == "https://ebay.example/item/2"
 
 
+def test_ebay_search_skips_non_actionable_urls(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [
+                {
+                    "title": "Ungültige URL",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "javascript:alert(1)",
+                    "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
+                },
+                {
+                    "title": "Relative URL",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "/itm/123",
+                    "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
+                },
+                {
+                    "title": "Gültiges Angebot",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://www.ebay.de/itm/123",
+                    "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
+                },
+            ]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.url == "https://www.ebay.de/itm/123"
+
+
 def test_ebay_search_skips_zero_or_negative_prices(monkeypatch):
     connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
     connector._token = "token"
