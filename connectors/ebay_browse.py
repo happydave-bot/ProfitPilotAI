@@ -99,6 +99,12 @@ class EbayBrowseConnector:
         return token
 
     @staticmethod
+    def _is_timeout_exception(exc: Exception) -> bool:
+        if isinstance(exc, TimeoutError):
+            return True
+        return isinstance(exc, error.URLError) and isinstance(exc.reason, TimeoutError)
+
+    @staticmethod
     def _retry_after_seconds(exc: error.HTTPError) -> float:
         raw = exc.headers.get("Retry-After") if exc.headers is not None else None
         try:
@@ -155,8 +161,16 @@ class EbayBrowseConnector:
                 self._token = None
                 raise RuntimeError(f"eBay Browse API: {exc}") from exc
         except Exception as exc:
-            self._token = None
-            raise RuntimeError(f"eBay Browse API: {exc}") from exc
+            if self._is_timeout_exception(exc):
+                try:
+                    with request.urlopen(req, timeout=self.timeout) as response:
+                        data = json.loads(response.read().decode("utf-8"))
+                except Exception as retry_exc:
+                    self._token = None
+                    raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
+            else:
+                self._token = None
+                raise RuntimeError(f"eBay Browse API: {exc}") from exc
 
         if not isinstance(data, dict):
             raise RuntimeError("eBay Browse API: ungültige JSON-Antwort")
