@@ -315,3 +315,35 @@ def test_ebay_search_skips_non_finite_price_and_shipping(monkeypatch):
     assert len(results) == 1
     assert results[0].offer.price == 84.99
     assert results[0].offer.shipping == 4.99
+
+ 
+def test_ebay_config_rejects_non_integer_limit():
+    try:
+        EbayBrowseConfig("client", "secret", limit="20")
+    except ValueError as exc:
+        assert str(exc) == "eBay search limit must be an integer"
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_ebay_config_rejects_out_of_range_limit():
+    for value in (0, 201):
+        try:
+            EbayBrowseConfig("client", "secret", limit=value)
+        except ValueError as exc:
+            assert str(exc) == "eBay search limit must be between 1 and 200"
+        else:
+            raise AssertionError("Expected ValueError")
+
+
+def test_ebay_config_rejects_invalid_environment_limit(monkeypatch):
+    monkeypatch.setenv("EBAY_CLIENT_ID", "client")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "secret")
+    monkeypatch.setenv("EBAY_SEARCH_LIMIT", "not-a-number")
+
+    try:
+        EbayBrowseConfig.from_env()
+    except ValueError as exc:
+        assert str(exc) == "EBAY_SEARCH_LIMIT must be an integer"
+    else:
+        raise AssertionError("Expected ValueError")
