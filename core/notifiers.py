@@ -77,6 +77,11 @@ class TelegramNotifier(Notifier):
                     self.sleep(self._retry_delay(exc.code, body, attempt))
                     continue
                 raise NotificationError(f"Telegram HTTP {exc.code}") from exc
+            except (TimeoutError, error.URLError) as exc:
+                if attempt < self.max_retries:
+                    self.sleep(self._retry_delay(0, {}, attempt))
+                    continue
+                raise NotificationError(f"Telegram-Versand fehlgeschlagen: {exc}") from exc
             except Exception as exc:
                 if isinstance(exc, NotificationError):
                     raise
