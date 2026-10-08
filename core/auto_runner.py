@@ -51,7 +51,11 @@ class AutoRunner:
         except Exception:
             logger.exception("Scan konnte nicht ausgeführt werden")
             return []
-        fresh = self.monitor.check(candidates)
+        try:
+            fresh = self.monitor.check(candidates)
+        except Exception:
+            logger.exception("Alert-Prüfung konnte nicht ausgeführt werden")
+            return []
         for candidate in fresh:
             try:
                 self.notifier.send(self._message(candidate))
