@@ -17,8 +17,8 @@ def make_deal(amazon_price=50.0, ebay_price=100.0, fee=10.0):
 
 def test_profitable_deal():
     result = ProfitEngine.calculate(make_deal())
-    assert result.profit == 38.0
-    assert result.roi == 76.0
+    assert result.profit == 37.55
+    assert result.roi == 75.1
     assert result.decision is Decision.BUY
     assert result.score > 0
 
@@ -32,3 +32,23 @@ def test_low_profit_is_ignored():
 def test_zero_amazon_price_is_rejected():
     with pytest.raises(ValueError):
         ProfitEngine.calculate(make_deal(amazon_price=0))
+
+
+def test_ebay_fee_includes_shipping_and_fixed_order_fee():
+    deal = make_deal(amazon_price=40.0, ebay_price=85.0, fee=12.9)
+    deal = DealInput(
+        product=deal.product,
+        amazon=deal.amazon,
+        ebay=MarketOffer(
+            "ebay",
+            "https://ebay.example/test",
+            85.0,
+            shipping=10.0,
+        ),
+        ebay_fee_percent=deal.ebay_fee_percent,
+        packaging_cost=deal.packaging_cost,
+    )
+
+    result = ProfitEngine.calculate(deal)
+
+    assert result.profit == 20.3
