@@ -141,7 +141,7 @@ class EbayBrowseConnector:
                 except Exception as retry_exc:
                     self._token = None
                     raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
-            elif exc.code == 429 or 500 <= exc.code <= 599:
+            elif exc.code == 408 or exc.code == 429 or 500 <= exc.code <= 599:
                 delay = self._retry_after_seconds(exc)
                 if delay:
                     time.sleep(delay)
