@@ -11,7 +11,7 @@ class NotificationError(RuntimeError):
     pass
 
 
-class Notifier(ABC):
+class Notifier:
     def send(self, message: str) -> None:
         raise NotImplementedError
 
