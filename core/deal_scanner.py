@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from core.models import DealInput, DealResult, MarketOffer, Product
+from core.deal_killer import DealKillerEngine
+from core.models import DealInput, DealResult, MarketOffer, Product, Decision
 from core.product_matcher import ProductMatcher
 from core.profit_engine import ProfitEngine
 
@@ -45,6 +46,9 @@ class DealScanner:
                     packaging_cost=packaging_cost,
                 )
             )
+            deal = DealKillerEngine.evaluate(deal, amazon, ebay)
+            if deal.decision is not Decision.BUY:
+                continue
             candidates.append(
                 ScanCandidate(
                     product=product,
