@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from urllib import parse, request
@@ -31,6 +32,8 @@ class TelegramNotifier(Notifier):
     def __init__(self, token: str | None = None, chat_id: str | None = None, timeout: float = 10.0) -> None:
         self.token = token or os.getenv("PROFITPILOT_TELEGRAM_TOKEN")
         self.chat_id = chat_id or os.getenv("PROFITPILOT_TELEGRAM_CHAT_ID")
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("Telegram timeout muss endlich und größer als 0 sein")
         self.timeout = timeout
 
     @property
