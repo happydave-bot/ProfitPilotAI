@@ -93,6 +93,23 @@ def test_falls_back_to_title_when_identifier_finds_no_deal():
     assert ebay.queries == ["123", "Bosch Akkuschrauber 18V"]
 
 
+def test_deduplicates_repeated_ebay_offer_urls():
+    product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+    offer = MarketOffer("ebay", "https://ebay.example/p", 85.0)
+    listing = MarketListing(product, offer)
+
+    class DuplicateEbay:
+        def search(self, query):
+            return [listing, listing]
+
+    service = LiveDealService(FakeAmazon(), DuplicateEbay())
+
+    results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.url == "https://ebay.example/p"
+
+
 def test_includes_ebay_shipping_in_real_profit():
     class ShippingEbay(FakeEbay):
         def search(self, query):
