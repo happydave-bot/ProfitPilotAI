@@ -120,6 +120,20 @@ def test_applies_ebay_competition_killer_end_to_end():
     assert service.scan("Bosch Akkuschrauber") == []
 
 
+def test_amazon_search_error_does_not_crash_scan(caplog):
+    class BrokenAmazon:
+        def search(self, query):
+            raise RuntimeError("Amazon unavailable")
+
+    service = LiveDealService(BrokenAmazon(), FakeEbay())
+
+    with caplog.at_level(logging.ERROR):
+        results = service.scan("Bosch Akkuschrauber")
+
+    assert results == []
+    assert "Amazon-Suche fehlgeschlagen" in caplog.text
+
+
 def test_ebay_query_error_falls_back_to_next_query_and_logs(caplog):
     product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
     matched = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
