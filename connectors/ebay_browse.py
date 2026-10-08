@@ -97,6 +97,12 @@ class EbayBrowseConnector:
             raise RuntimeError(f"eBay Browse API: {exc}") from exc
 
         results: list[MarketListing] = []
+        total_results = data.get("total")
+        try:
+            competition_count = int(total_results) if total_results is not None else None
+        except (TypeError, ValueError):
+            competition_count = None
+
         for item in data.get("itemSummaries", []):
             try:
                 price = float((item.get("price") or {})["value"])
@@ -114,11 +120,22 @@ class EbayBrowseConnector:
                 ean=str(gtin) if gtin else None,
                 model=mpn or None,
             )
+            shipping = 0.0
+            shipping_options = item.get("shippingOptions") or []
+            if shipping_options:
+                shipping_cost = (shipping_options[0].get("shippingCost") or {}).get("value")
+                try:
+                    shipping = float(shipping_cost)
+                except (TypeError, ValueError):
+                    shipping = 0.0
+
             offer = MarketOffer(
                 source="ebay",
                 url=str(item.get("itemWebUrl") or ""),
                 price=price,
+                shipping=shipping,
                 seller=str((item.get("seller") or {}).get("username") or ""),
+                competition_count=competition_count,
             )
             results.append(MarketListing(product=product, offer=offer))
         return results
