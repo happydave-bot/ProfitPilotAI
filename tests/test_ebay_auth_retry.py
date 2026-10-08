@@ -375,3 +375,42 @@ def test_ebay_oauth_does_not_retry_client_error(monkeypatch):
         raise AssertionError("Expected RuntimeError")
 
     assert calls == ["https://api.ebay.com/identity/v1/oauth2/token"]
+
+
+def test_ebay_oauth_retries_once_after_network_timeout(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise TimeoutError("timed out")
+        return Response({"access_token": "fresh-token"})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector._access_token() == "fresh-token"
+    assert len(calls) == 2
+    assert connector._token == "fresh-token"
+
+
+def test_ebay_oauth_does_not_retry_non_timeout_network_error(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.full_url)
+        raise OSError("network failure")
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    try:
+        connector._access_token()
+    except RuntimeError as exc:
+        assert "eBay OAuth" in str(exc)
+        assert "network failure" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+    assert calls == ["https://api.ebay.com/identity/v1/oauth2/token"]
+    assert connector._token is None
