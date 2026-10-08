@@ -4,6 +4,10 @@ import argparse
 import logging
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from connectors.amazon_creators import AmazonCreatorsConfig, AmazonCreatorsConnector
 from connectors.ebay_browse import EbayBrowseConfig, EbayBrowseConnector
 from core.alert_monitor import AlertMonitor
