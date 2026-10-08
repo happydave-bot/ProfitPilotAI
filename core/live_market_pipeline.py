@@ -52,6 +52,9 @@ class LiveMarketPipeline:
         return ()
 
     def scan(self, query: str) -> list[LiveScanResult]:
+        query = query.strip()
+        if not query or self.amazon is None or self.ebay is None:
+            return []
         amazon_listings = list(self.amazon.search(query))
         results: list[LiveScanResult] = []
         for listing in amazon_listings:
