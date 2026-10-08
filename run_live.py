@@ -86,6 +86,31 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
     )
 
 
+def run_ebay_connectivity_test() -> int:
+    """Perform one real eBay Browse API search without Telegram or state changes."""
+    config = EbayBrowseConfig.from_env()
+    queries = _read_queries()
+    if config is None:
+        print("eBay-Test: EBAY_CLIENT_ID/EBAY_CLIENT_SECRET fehlen")
+        return 2
+    if not queries:
+        print("eBay-Test: PROFITPILOT_QUERY oder PROFITPILOT_QUERIES fehlt")
+        return 2
+
+    connector = EbayBrowseConnector(config)
+    for query in queries:
+        print(f"eBay-Test: Suche '{query}' ...")
+        try:
+            results = connector.search(query)
+        except Exception as exc:
+            print(f"eBay-Test: FEHLER: {exc}")
+            return 1
+        print(f"eBay-Test: OK - {len(results)} Angebote gefunden")
+        for listing in results[:5]:
+            print(f"  - {listing.product.title} | {listing.offer.price:.2f} EUR | {listing.offer.url}")
+    return 0
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ProfitPilotAI Live Runner")
     parser.add_argument(
@@ -103,6 +128,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="nur Konfiguration prüfen; keine Netzwerk- oder Telegram-Anfragen",
     )
+    parser.add_argument(
+        "--test-ebay",
+        action="store_true",
+        help="eine echte eBay-Browse-Suche testen; kein Telegram und keine Zustandsänderung",
+    )
     return parser.parse_args()
 
 
@@ -112,6 +142,9 @@ def main() -> None:
         result = validate_live_environment()
         print(result.summary())
         raise SystemExit(0 if result.ok else 2)
+
+    if args.test_ebay:
+        raise SystemExit(run_ebay_connectivity_test())
 
     dry_run = args.dry_run or os.getenv("PROFITPILOT_DRY_RUN", "").lower() in {"1", "true", "yes"}
     runner = build_live_runner(dry_run=dry_run)
