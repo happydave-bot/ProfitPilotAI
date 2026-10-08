@@ -24,11 +24,19 @@ class LiveMarketPipeline:
         self.ebay_fee_percent = ebay_fee_percent
         self.packaging_cost = packaging_cost
 
-    def scan(self, query: str) -> list[LiveScanResult]:
-        amazon_listings = list(self.amazon.search(query))
-        results: list[LiveScanResult] = []
-        for listing in amazon_listings:
-            candidates = self.ebay.search(listing.product.title)
+    @staticmethod
+    def _ebay_queries(product: Product) -> tuple[str, ...]:
+        values = [product.ean, product.model, product.title]
+        queries: list[str] = []
+        for value in values:
+            normalized = str(value or "").strip()
+            if normalized and normalized not in queries:
+                queries.append(normalized)
+        return tuple(queries)
+
+    def _scan_ebay_candidates(self, listing: MarketListing) -> tuple[ScanCandidate, ...]:
+        for ebay_query in self._ebay_queries(listing.product):
+            candidates = self.ebay.search(ebay_query)
             ebay_pairs = [(item.product, item.offer) for item in candidates]
             deals = tuple(
                 DealScanner.scan(
@@ -39,6 +47,15 @@ class LiveMarketPipeline:
                     packaging_cost=self.packaging_cost,
                 )
             )
+            if deals:
+                return deals
+        return ()
+
+    def scan(self, query: str) -> list[LiveScanResult]:
+        amazon_listings = list(self.amazon.search(query))
+        results: list[LiveScanResult] = []
+        for listing in amazon_listings:
+            deals = self._scan_ebay_candidates(listing)
             if deals:
                 results.append(LiveScanResult(listing.product, listing.offer, deals))
         return results
