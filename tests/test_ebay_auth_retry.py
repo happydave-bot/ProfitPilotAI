@@ -271,6 +271,10 @@ def test_ebay_search_retries_once_after_network_timeout(monkeypatch):
     connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
     connector._token = "token"
     calls = []
+    delays = []
+
+    def fake_sleep(delay):
+        delays.append(delay)
 
     def fake_urlopen(req, timeout):
         calls.append(req.headers.get("Authorization"))
@@ -278,10 +282,12 @@ def test_ebay_search_retries_once_after_network_timeout(monkeypatch):
             raise TimeoutError("timed out")
         return Response({"itemSummaries": []})
 
+    monkeypatch.setattr("connectors.ebay_browse.time.sleep", fake_sleep)
     monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
 
     assert connector.search("Bosch Akkuschrauber") == []
     assert calls == ["Bearer token", "Bearer token"]
+    assert delays == [0.5]
     assert connector._token == "token"
 
 
