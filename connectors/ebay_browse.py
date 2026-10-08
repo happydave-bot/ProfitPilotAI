@@ -108,6 +108,15 @@ class EbayBrowseConnector:
             self._token = None
             raise RuntimeError(f"eBay Browse API: {exc}") from exc
 
+        if not isinstance(data, dict):
+            raise RuntimeError("eBay Browse API: ungültige JSON-Antwort")
+
+        raw_item_summaries = data.get("itemSummaries", [])
+        if raw_item_summaries is None:
+            raw_item_summaries = []
+        if not isinstance(raw_item_summaries, list):
+            raise RuntimeError("eBay Browse API: itemSummaries muss eine Liste sein")
+
         results: list[MarketListing] = []
         total_results = data.get("total")
         try:
@@ -116,7 +125,9 @@ class EbayBrowseConnector:
             parsed_total = None
         competition_count = parsed_total if parsed_total is not None and parsed_total >= 0 else None
 
-        for item in data.get("itemSummaries", []):
+        for item in raw_item_summaries:
+            if not isinstance(item, dict):
+                continue
             try:
                 price = float((item.get("price") or {})["value"])
             except (KeyError, TypeError, ValueError):
