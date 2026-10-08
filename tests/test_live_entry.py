@@ -75,3 +75,29 @@ def test_check_mode_accepts_explicit_dry_run(monkeypatch):
         assert exc.code == 0
     else:
         raise AssertionError("main() hätte mit SystemExit enden müssen")
+
+
+def test_ebay_listing_keeps_shipping_and_competition_count():
+    from connectors.ebay_browse import EbayBrowseConnector, EbayBrowseConfig
+
+    connector = EbayBrowseConnector(EbayBrowseConfig("id", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return b'{"total":26,"itemSummaries":[{"title":"Bosch GSR 18V-65","gtin":"4000000000001","brand":"Bosch","mpn":"06019N0E2B","price":{"value":"85.00"},"shippingOptions":[{"shippingCost":{"value":"4.99"}}],"itemWebUrl":"https://ebay.example"}]}'
+
+    import connectors.ebay_browse as module
+    original = module.request.urlopen
+    module.request.urlopen = lambda *args, **kwargs: Response()
+    try:
+        listing = connector.search("Bosch GSR 18V-65")[0]
+    finally:
+        module.request.urlopen = original
+
+    assert listing.offer.shipping == 4.99
+    assert listing.offer.competition_count == 26
