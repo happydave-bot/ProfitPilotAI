@@ -191,3 +191,27 @@ def test_runner_rejects_non_finite_interval():
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "endlich" in str(exc)
+
+    
+def test_runner_rejects_negative_max_cycles():
+    runner = AutoRunner(lambda: [], MemoryNotifier(), sleep=lambda _: None)
+    try:
+        runner.run(max_cycles=-1)
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "nichtnegativer Integer" in str(exc)
+
+
+def test_runner_rejects_non_integer_max_cycles():
+    runner = AutoRunner(lambda: [], MemoryNotifier(), sleep=lambda _: None)
+    for value in (1.5, "2", True):
+        try:
+            runner.run(max_cycles=value)
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "nichtnegativer Integer" in str(exc)
+
+
+def test_runner_allows_zero_max_cycles():
+    runner = AutoRunner(lambda: (_ for _ in ()).throw(AssertionError("scan must not run")), MemoryNotifier())
+    assert runner.run(max_cycles=0) == 0
