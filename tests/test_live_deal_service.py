@@ -30,6 +30,14 @@ def test_profitable_cross_market_deal():
     assert results[0].match_confidence == 100.0
 
 
+def test_missing_ebay_connector_is_reported_and_scan_stays_empty():
+    service = LiveDealService(FakeAmazon(), None)
+
+    assert service.amazon_configured is True
+    assert service.ebay_configured is False
+    assert service.scan("Bosch Akkuschrauber") == []
+
+
 def test_empty_query_returns_no_results():
     service = LiveDealService(FakeAmazon(), FakeEbay())
     assert service.scan("   ") == []
