@@ -208,3 +208,43 @@ def test_ebay_search_retries_once_after_request_timeout(monkeypatch):
     assert connector.search("Bosch Akkuschrauber") == []
     assert calls == ["Bearer token", "Bearer token"]
     assert connector._token == "token"
+
+
+def test_ebay_search_retries_once_after_network_timeout(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) == 1:
+            raise TimeoutError("timed out")
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert calls == ["Bearer token", "Bearer token"]
+    assert connector._token == "token"
+
+
+def test_ebay_search_does_not_retry_non_timeout_network_error(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        raise OSError("network failure")
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    try:
+        connector.search("Bosch Akkuschrauber")
+    except RuntimeError as exc:
+        assert "network failure" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+    assert len(calls) == 1
+    assert connector._token is None
