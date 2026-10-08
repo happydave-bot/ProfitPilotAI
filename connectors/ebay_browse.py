@@ -123,10 +123,14 @@ class EbayBrowseConnector:
                 ean=str(gtin) if gtin else None,
                 model=mpn or None,
             )
-            shipping = 0.0
-            shipping_options = item.get("shippingOptions") or []
+            shipping_options = item.get("shippingOptions")
+            if not isinstance(shipping_options, list) or not shipping_options:
+                continue
+
             shipping_costs: list[float] = []
             for option in shipping_options:
+                if not isinstance(option, dict):
+                    continue
                 raw_cost = (option.get("shippingCost") or {}).get("value")
                 try:
                     cost = float(raw_cost)
@@ -134,8 +138,10 @@ class EbayBrowseConnector:
                     continue
                 if cost >= 0:
                     shipping_costs.append(cost)
-            if shipping_costs:
-                shipping = min(shipping_costs)
+            if not shipping_costs:
+                continue
+
+            shipping = min(shipping_costs)
 
             offer = MarketOffer(
                 source="ebay",
