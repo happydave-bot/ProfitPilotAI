@@ -22,12 +22,13 @@ class LivePreflight:
         return "\n".join(lines)
 
 
-def validate_live_environment() -> LivePreflight:
+def validate_live_environment(dry_run: bool | None = None) -> LivePreflight:
     missing: list[str] = []
     warnings: list[str] = []
 
     ebay_only = os.getenv("PROFITPILOT_EBAY_ONLY", "").strip().lower() in {"1", "true", "yes"}
-    dry_run = os.getenv("PROFITPILOT_DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
+    if dry_run is None:
+        dry_run = os.getenv("PROFITPILOT_DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
 
     required = {
         "PROFITPILOT_QUERY": "",
