@@ -34,6 +34,29 @@ def test_preflight_reports_missing_credentials(monkeypatch):
     assert "EBAY_CLIENT_ID" in result.missing
 
 
+def test_preflight_requires_telegram_for_normal_mode(monkeypatch):
+    set_credentials(monkeypatch)
+    monkeypatch.delenv("PROFITPILOT_TELEGRAM_TOKEN", raising=False)
+    monkeypatch.delenv("PROFITPILOT_TELEGRAM_CHAT_ID", raising=False)
+
+    result = validate_live_environment()
+
+    assert not result.ok
+    assert "PROFITPILOT_TELEGRAM_TOKEN" in result.missing
+    assert "PROFITPILOT_TELEGRAM_CHAT_ID" in result.missing
+
+
+def test_preflight_allows_missing_telegram_in_dry_run(monkeypatch):
+    set_credentials(monkeypatch)
+    monkeypatch.delenv("PROFITPILOT_TELEGRAM_TOKEN", raising=False)
+    monkeypatch.delenv("PROFITPILOT_TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.setenv("PROFITPILOT_DRY_RUN", "1")
+
+    result = validate_live_environment()
+
+    assert result.ok
+
+
 def test_preflight_rejects_invalid_fee(monkeypatch):
     set_credentials(monkeypatch)
     monkeypatch.setenv("PROFITPILOT_EBAY_FEE_PERCENT", "abc")
