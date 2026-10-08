@@ -92,6 +92,52 @@ def test_runner_does_not_persist_failed_notification(tmp_path):
     assert store.load() == set()
 
 
+def test_runner_continues_when_state_save_fails():
+    class BrokenStateStore:
+        def load(self):
+            return set()
+
+        def save(self, seen):
+            raise OSError("disk full")
+
+    notifier = MemoryNotifier()
+    runner = AutoRunner(
+        lambda: [candidate()],
+        notifier,
+        sleep=lambda _: None,
+        state_store=BrokenStateStore(),
+    )
+
+    assert len(runner.run_once()) == 1
+    assert len(notifier.messages) == 1
+
+
+def test_runner_can_continue_after_transient_state_save_failure():
+    class FlakyStateStore:
+        def __init__(self):
+            self.calls = 0
+
+        def load(self):
+            return set()
+
+        def save(self, seen):
+            self.calls += 1
+            if self.calls == 1:
+                raise OSError("temporary disk failure")
+
+    store = FlakyStateStore()
+    runner = AutoRunner(
+        lambda: [candidate()],
+        MemoryNotifier(),
+        sleep=lambda _: None,
+        state_store=store,
+    )
+
+    assert len(runner.run_once()) == 1
+    assert len(runner.run_once()) == 0
+    assert store.calls == 1
+
+
 def test_runner_rejects_invalid_interval():
     try:
         AutoRunner(lambda: [], MemoryNotifier(), config=RunnerConfig(interval_seconds=0))
