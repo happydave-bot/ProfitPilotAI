@@ -207,6 +207,12 @@ def test_ebay_search_skips_non_actionable_urls(monkeypatch):
                     "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
                 },
                 {
+                    "title": "Fremde Domain",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://example.com/itm/123",
+                    "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
+                },
+                {
                     "title": "Relative URL",
                     "price": {"value": "79.99"},
                     "itemWebUrl": "/itm/123",
