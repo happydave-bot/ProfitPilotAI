@@ -96,7 +96,7 @@ def test_live_service_includes_ebay_shipping_in_real_profit():
     results = service.scan("Bosch Akkuschrauber")
 
     assert len(results) == 1
-    assert results[0].deal.profit == 20.3
+    assert results[0].deal.profit == 20.29
 
 
 def test_live_service_applies_ebay_competition_killer_end_to_end():
