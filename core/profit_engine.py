@@ -4,6 +4,7 @@ from core.models import DealInput, DealResult, Decision
 class ProfitEngine:
     MIN_PROFIT = 20.0
     MIN_ROI = 25.0
+    EBAY_FIXED_ORDER_FEE = 0.45
 
     @classmethod
     def calculate(cls, data: DealInput) -> DealResult:
@@ -14,11 +15,13 @@ class ProfitEngine:
         if data.ebay_fee_percent < 0 or data.packaging_cost < 0:
             raise ValueError("Fees and packaging cost cannot be negative")
 
-        ebay_fee = data.ebay.price * data.ebay_fee_percent / 100
+        ebay_fee_base = data.ebay.price + data.ebay.shipping
+        ebay_fee = ebay_fee_base * data.ebay_fee_percent / 100
         total_cost = (
             data.amazon.price
             + data.amazon.shipping
             + ebay_fee
+            + cls.EBAY_FIXED_ORDER_FEE
             + data.ebay.shipping
             + data.packaging_cost
         )
