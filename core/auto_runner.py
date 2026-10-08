@@ -40,7 +40,10 @@ class AutoRunner:
         if not math.isfinite(self.config.interval_seconds) or self.config.interval_seconds <= 0:
             raise ValueError("interval_seconds muss endlich und größer als 0 sein")
         if self.state_store is not None:
-            self.monitor.seen.update(self.state_store.load())
+            try:
+                self.monitor.seen.update(self.state_store.load())
+            except Exception:
+                logger.exception("Alert-Status konnte nicht geladen werden; starte ohne gespeicherten Status")
 
     def run_once(self) -> list[ScanCandidate]:
         try:
