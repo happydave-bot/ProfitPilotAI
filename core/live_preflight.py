@@ -27,7 +27,11 @@ def validate_live_environment() -> LivePreflight:
     warnings: list[str] = []
 
     ebay_only = os.getenv("PROFITPILOT_EBAY_ONLY", "").strip().lower() in {"1", "true", "yes"}
+    dry_run = os.getenv("PROFITPILOT_DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
+
     required = {
+        "PROFITPILOT_QUERY": "",
+
         "EBAY_CLIENT_ID": os.getenv("EBAY_CLIENT_ID", "").strip(),
         "EBAY_CLIENT_SECRET": os.getenv("EBAY_CLIENT_SECRET", "").strip(),
     }
@@ -37,6 +41,19 @@ def validate_live_environment() -> LivePreflight:
             "AMAZON_CREATORS_CLIENT_SECRET": os.getenv("AMAZON_CREATORS_CLIENT_SECRET", "").strip(),
             "AMAZON_PARTNER_TAG": os.getenv("AMAZON_PARTNER_TAG", "").strip(),
         })
+    if not ebay_only:
+        required.update({
+            "PROFITPILOT_TELEGRAM_TOKEN": "" if dry_run else os.getenv("PROFITPILOT_TELEGRAM_TOKEN", "").strip(),
+            "PROFITPILOT_TELEGRAM_CHAT_ID": "" if dry_run else os.getenv("PROFITPILOT_TELEGRAM_CHAT_ID", "").strip(),
+        })
+    else:
+        required.pop("PROFITPILOT_TELEGRAM_TOKEN", None)
+        required.pop("PROFITPILOT_TELEGRAM_CHAT_ID", None)
+
+    query = os.getenv("PROFITPILOT_QUERY", "").strip()
+    queries = os.getenv("PROFITPILOT_QUERIES", "").strip()
+    required["PROFITPILOT_QUERY"] = query or queries
+
     missing.extend(name for name, value in required.items() if not value)
     if ebay_only:
         warnings.append("eBay-only-Modus: Ohne Amazon-Quelle werden keine Cross-Market-Deals erzeugt.")
