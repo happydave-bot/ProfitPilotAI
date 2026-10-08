@@ -27,3 +27,15 @@ def test_telegram_rejects_invalid_timeout():
     for value in (0, -1, float("inf"), float("nan")):
         with pytest.raises(ValueError, match="endlich und größer als 0"):
             TelegramNotifier(token="secret", chat_id="123", timeout=value)
+
+
+def test_telegram_rejects_empty_message(monkeypatch):
+    notifier = TelegramNotifier(token="secret", chat_id="123")
+    with pytest.raises(NotificationError, match="nicht leer"):
+        notifier.send("")
+
+
+def test_telegram_rejects_message_over_4096_characters(monkeypatch):
+    notifier = TelegramNotifier(token="secret", chat_id="123")
+    with pytest.raises(NotificationError, match="4096"):
+        notifier.send("x" * 4097)
