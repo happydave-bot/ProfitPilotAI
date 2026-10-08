@@ -115,4 +115,14 @@ class LiveDealService:
                 logger.exception("Amazon-Listing konnte nicht verarbeitet werden | Index=%s", index)
                 continue
 
-        return sorted(candidates, key=lambda item: (item.deal.profit, item.deal.roi), reverse=True)
+        candidates.sort(key=lambda item: (item.deal.profit, item.deal.roi), reverse=True)
+        unique_candidates: list[ScanCandidate] = []
+        seen_offer_urls: set[str] = set()
+        for candidate in candidates:
+            offer_url = str(candidate.ebay.url or "").strip()
+            if offer_url and offer_url in seen_offer_urls:
+                continue
+            if offer_url:
+                seen_offer_urls.add(offer_url)
+            unique_candidates.append(candidate)
+        return unique_candidates
