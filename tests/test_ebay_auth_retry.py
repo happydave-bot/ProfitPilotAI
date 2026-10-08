@@ -190,3 +190,21 @@ def test_search_request_uses_current_token_and_config(monkeypatch):
     assert req.headers["Authorization"] == "Bearer fresh-token"
     assert req.headers["Accept-language"] == "de-DE"
     assert req.headers["X-ebay-c-marketplace-id"] == "EBAY_DE"
+
+
+def test_ebay_search_retries_once_after_request_timeout(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) == 1:
+            raise HTTPError(req.full_url, 408, "Request Timeout", {}, None)
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert calls == ["Bearer token", "Bearer token"]
+    assert connector._token == "token"
