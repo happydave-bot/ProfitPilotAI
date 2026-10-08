@@ -49,3 +49,86 @@ def test_live_pipeline_accepts_ecommerce_identifiers_from_ebay_listing():
 
     assert len(results) == 1
     assert results[0].deals[0].match_confidence == 100.0
+
+
+class RecordingEbay:
+    def __init__(self, listings_by_query):
+        self.listings_by_query = listings_by_query
+        self.queries = []
+
+    def search(self, query):
+        self.queries.append(query)
+        return list(self.listings_by_query.get(query, []))
+
+
+def test_live_pipeline_prefers_ean_before_model_and_title():
+    product = Product(
+        title="Bosch GSR 18V-65",
+        brand="Bosch",
+        ean="4000000000001",
+        model="06019N0E2B",
+    )
+    amazon = FakeConnector([MarketListing(product, MarketOffer("amazon", "https://a", 40.0))])
+    ebay = RecordingEbay({
+        "4000000000001": [
+            MarketListing(product, MarketOffer("ebay", "https://e", 85.0))
+        ],
+    })
+
+    results = LiveMarketPipeline(amazon, ebay).scan("Bosch GSR 18V-65")
+
+    assert len(results) == 1
+    assert ebay.queries == ["4000000000001"]
+
+
+def test_live_pipeline_falls_back_to_model_when_ean_has_no_deal():
+    product = Product(
+        title="Bosch GSR 18V-65",
+        brand="Bosch",
+        ean="4000000000001",
+        model="06019N0E2B",
+    )
+    unmatched = Product(title="Makita Bohrmaschine", brand="Makita", ean="999")
+    matched = Product(
+        title="Bosch GSR 18V-65",
+        brand="Bosch",
+        ean="4000000000001",
+        model="06019N0E2B",
+    )
+    amazon = FakeConnector([MarketListing(product, MarketOffer("amazon", "https://a", 40.0))])
+    ebay = RecordingEbay({
+        "4000000000001": [MarketListing(unmatched, MarketOffer("ebay", "https://u", 85.0))],
+        "06019N0E2B": [MarketListing(matched, MarketOffer("ebay", "https://m", 85.0))],
+    })
+
+    results = LiveMarketPipeline(amazon, ebay).scan("Bosch GSR 18V-65")
+
+    assert len(results) == 1
+    assert ebay.queries == ["4000000000001", "06019N0E2B"]
+
+
+def test_live_pipeline_falls_back_to_title_when_identifiers_have_no_deal():
+    product = Product(
+        title="Bosch GSR 18V-65",
+        brand="Bosch",
+        ean="4000000000001",
+        model="06019N0E2B",
+    )
+    unmatched = Product(title="Makita Bohrmaschine", brand="Makita", ean="999")
+    matched = Product(
+        title="Bosch GSR 18V-65",
+        brand="Bosch",
+        ean="4000000000001",
+        model="06019N0E2B",
+    )
+    amazon = FakeConnector([MarketListing(product, MarketOffer("amazon", "https://a", 40.0))])
+    ebay = RecordingEbay({
+        "4000000000001": [MarketListing(unmatched, MarketOffer("ebay", "https://u", 85.0))],
+        "06019N0E2B": [MarketListing(unmatched, MarketOffer("ebay", "https://u2", 85.0))],
+        "Bosch GSR 18V-65": [MarketListing(matched, MarketOffer("ebay", "https://t", 85.0))],
+    })
+
+    results = LiveMarketPipeline(amazon, ebay).scan("Bosch GSR 18V-65")
+
+    assert len(results) == 1
+    assert ebay.queries == ["4000000000001", "06019N0E2B", "Bosch GSR 18V-65"]
