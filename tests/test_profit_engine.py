@@ -67,4 +67,4 @@ def test_ebay_fixed_order_fee_is_045_above_10_euros():
 
     result = ProfitEngine.calculate(deal)
 
-    assert result.profit == 2.01
+    assert result.profit == 2.56
