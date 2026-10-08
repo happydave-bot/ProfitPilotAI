@@ -134,7 +134,11 @@ class EbayBrowseConnector:
         return min(delay, 5.0)
 
     def _search_request(self, query: str, token: str) -> request.Request:
-        params = parse.urlencode({"q": query, "limit": self.config.limit})
+        params = parse.urlencode({
+            "q": query,
+            "limit": self.config.limit,
+            "filter": "buyingOptions:{FIXED_PRICE}",
+        })
         return request.Request(
             f"{self.base_url}/buy/browse/v1/item_summary/search?{params}",
             headers={
