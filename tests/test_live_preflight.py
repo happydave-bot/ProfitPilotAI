@@ -8,6 +8,8 @@ def set_credentials(monkeypatch):
     monkeypatch.setenv("EBAY_CLIENT_ID", "ebay-id")
     monkeypatch.setenv("EBAY_CLIENT_SECRET", "ebay-secret")
     monkeypatch.setenv("PROFITPILOT_QUERY", "Bosch Akkuschrauber")
+    monkeypatch.setenv("PROFITPILOT_TELEGRAM_TOKEN", "telegram-token")
+    monkeypatch.setenv("PROFITPILOT_TELEGRAM_CHAT_ID", "123456")
 
 
 def test_preflight_accepts_complete_configuration(monkeypatch):
@@ -52,7 +54,7 @@ def test_preflight_allows_missing_telegram_in_dry_run(monkeypatch):
     monkeypatch.delenv("PROFITPILOT_TELEGRAM_CHAT_ID", raising=False)
     monkeypatch.setenv("PROFITPILOT_DRY_RUN", "1")
 
-    result = validate_live_environment()
+    result = validate_live_environment(dry_run=True)
 
     assert result.ok
 
