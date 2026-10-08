@@ -18,7 +18,16 @@ def test_amazon_search_normalizes_creators_response(monkeypatch):
         lambda req, timeout: _Response({"access_token": "token", "expires_in": 3600}) if "/auth/o2/token" in req.full_url else _Response({
             "searchResult": {"items": [{
                 "asin": "B123",
-                "itemInfo": {"title": {"displayValue": "Bosch Akkuschrauber"}},
+                "detailPageURL": "https://www.amazon.de/dp/B123?tag=tag-20",
+                "itemInfo": {
+                    "title": {"displayValue": "Bosch Akkuschrauber"},
+                    "byLineInfo": {"brand": {"displayValue": "Bosch"}},
+                    "externalIds": {"eans": {"displayValues": ["4000000000001"]}},
+                    "manufactureInfo": {
+                        "model": {"displayValue": "GSR-18V-65"},
+                        "itemPartNumber": {"displayValue": "06019N0E2B"},
+                    },
+                },
                 "offersV2": {"listings": [{"price": {"money": {"amount": "79.99"}}, "merchantInfo": {"name": "Amazon"}}]},
             }]}
         }),
@@ -27,8 +36,12 @@ def test_amazon_search_normalizes_creators_response(monkeypatch):
     results = AmazonCreatorsConnector(config).search("Bosch Akkuschrauber")
     assert len(results) == 1
     assert results[0].product.asin == "B123"
+    assert results[0].product.brand == "Bosch"
+    assert results[0].product.ean == "4000000000001"
+    assert results[0].product.model == "GSR-18V-65"
     assert results[0].offer.price == 79.99
     assert results[0].offer.source == "amazon"
+    assert results[0].offer.url == "https://www.amazon.de/dp/B123?tag=tag-20"
 
 
 def test_amazon_empty_query_does_not_call_api(monkeypatch):
