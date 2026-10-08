@@ -56,16 +56,29 @@ class LiveDealService:
                 logger.exception("eBay-Suche fehlgeschlagen | Query=%s", ebay_query)
                 continue
 
-            ebay_candidates = [(item.product, item.offer) for item in ebay_listings]
-            deals = DealScanner.scan(
-                listing.product,
-                listing.offer,
-                ebay_candidates,
-                ebay_fee_percent=self.config.ebay_fee_percent,
-                packaging_cost=self.config.packaging_cost,
-            )
+            deals: list[ScanCandidate] = []
+            for index, ebay_listing in enumerate(ebay_listings):
+                try:
+                    ebay_candidates = [(ebay_listing.product, ebay_listing.offer)]
+                    deals.extend(
+                        DealScanner.scan(
+                            listing.product,
+                            listing.offer,
+                            ebay_candidates,
+                            ebay_fee_percent=self.config.ebay_fee_percent,
+                            packaging_cost=self.config.packaging_cost,
+                        )
+                    )
+                except Exception:
+                    logger.exception(
+                        "eBay-Listing konnte nicht verarbeitet werden | Query=%s | Index=%s",
+                        ebay_query,
+                        index,
+                    )
+                    continue
+
             if deals:
-                return deals
+                return sorted(deals, key=lambda item: (item.deal.profit, item.deal.roi), reverse=True)
         return []
 
     def scan(self, query: str) -> list[ScanCandidate]:
