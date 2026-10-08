@@ -47,3 +47,34 @@ def test_ebay_search_empty_query_does_not_call_api(monkeypatch):
     connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
     monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(AssertionError()))
     assert connector.search("   ") == []
+
+
+def test_ebay_search_uses_lowest_valid_shipping_option(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [
+                {
+                    "title": "Bosch GSR 18V",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://ebay.example/item/1",
+                    "shippingOptions": [
+                        {"shippingCost": {"value": "9.99"}},
+                        {"shippingCost": {"value": "0.00"}},
+                        {"shippingCost": {"value": "invalid"}},
+                    ],
+                },
+            ]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.shipping == 0.0
