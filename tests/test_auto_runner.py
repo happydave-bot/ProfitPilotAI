@@ -215,3 +215,53 @@ def test_runner_rejects_non_integer_max_cycles():
 def test_runner_allows_zero_max_cycles():
     runner = AutoRunner(lambda: (_ for _ in ()).throw(AssertionError("scan must not run")), MemoryNotifier())
     assert runner.run(max_cycles=0) == 0
+
+
+def test_runner_returns_no_alerts_when_alert_check_fails():
+    class BrokenMonitor:
+        seen = set()
+
+        def check(self, candidates):
+            raise RuntimeError("alert check failed")
+
+        @staticmethod
+        def fingerprint(candidate):
+            return "unused"
+
+    runner = AutoRunner(
+        lambda: [candidate()],
+        MemoryNotifier(),
+        monitor=BrokenMonitor(),
+        sleep=lambda _: None,
+    )
+
+    assert runner.run_once() == []
+
+
+def test_runner_continues_after_alert_check_failure():
+    calls = 0
+
+    class FlakyMonitor:
+        seen = set()
+
+        def check(self, candidates):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise RuntimeError("temporary alert check failure")
+            return list(candidates)
+
+        @staticmethod
+        def fingerprint(candidate):
+            return "unused"
+
+    notifier = MemoryNotifier()
+    runner = AutoRunner(
+        lambda: [candidate()],
+        notifier,
+        monitor=FlakyMonitor(),
+        sleep=lambda _: None,
+    )
+
+    assert runner.run(max_cycles=2) == 2
+    assert len(notifier.messages) == 1
