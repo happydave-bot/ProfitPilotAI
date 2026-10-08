@@ -353,7 +353,7 @@ def test_ebay_search_respects_zero_transient_retries(monkeypatch):
 
 
 def test_ebay_config_rejects_invalid_max_retries():
-    for value in (-1, 4, True, 1.5):
+    for value in (-1, 3, True, 1.5):
         try:
             EbayBrowseConfig("client", "secret", max_retries=value)
         except ValueError:
