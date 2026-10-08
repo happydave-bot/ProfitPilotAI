@@ -349,6 +349,80 @@ def test_ebay_config_rejects_invalid_environment_limit(monkeypatch):
         raise AssertionError("Expected ValueError")
 
  
+def test_ebay_search_rejects_non_object_response(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps(["not", "an", "object"]).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    try:
+        connector.search("Bosch Akkuschrauber")
+    except RuntimeError as exc:
+        assert str(exc) == "eBay Browse API: ungültige JSON-Antwort"
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+
+def test_ebay_search_rejects_invalid_item_summaries_shape(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": {"title": "not-a-list"}}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    try:
+        connector.search("Bosch Akkuschrauber")
+    except RuntimeError as exc:
+        assert str(exc) == "eBay Browse API: itemSummaries muss eine Liste sein"
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+
+def test_ebay_search_skips_non_object_item_summary(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({
+                "itemSummaries": [
+                    "invalid-item",
+                    {
+                        "title": "Bosch GSR",
+                        "price": {"value": "79.99"},
+                        "itemWebUrl": "https://ebay.example/item/1",
+                        "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+                    },
+                ],
+            }).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.price == 79.99
+
+
 def test_ebay_search_rejects_invalid_competition_count(monkeypatch):
     connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
     connector._token = "token"
