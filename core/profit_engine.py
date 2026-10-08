@@ -4,7 +4,8 @@ from core.models import DealInput, DealResult, Decision
 class ProfitEngine:
     MIN_PROFIT = 20.0
     MIN_ROI = 25.0
-    EBAY_FIXED_ORDER_FEE = 0.45
+    EBAY_FIXED_ORDER_FEE_UNDER_OR_EQUAL_10 = 0.35
+    EBAY_FIXED_ORDER_FEE_OVER_10 = 0.45
 
     @classmethod
     def calculate(cls, data: DealInput) -> DealResult:
@@ -17,11 +18,16 @@ class ProfitEngine:
 
         ebay_fee_base = data.ebay.price + data.ebay.shipping
         ebay_fee = ebay_fee_base * data.ebay_fee_percent / 100
+        fixed_order_fee = (
+            cls.EBAY_FIXED_ORDER_FEE_OVER_10
+            if ebay_fee_base > 10.0
+            else cls.EBAY_FIXED_ORDER_FEE_UNDER_OR_EQUAL_10
+        )
         total_cost = (
             data.amazon.price
             + data.amazon.shipping
             + ebay_fee
-            + cls.EBAY_FIXED_ORDER_FEE
+            + fixed_order_fee
             + data.ebay.shipping
             + data.packaging_cost
         )
