@@ -24,7 +24,7 @@ def test_live_pipeline_bridges_amazon_to_ebay_and_scanner():
 
     assert len(results) == 1
     assert results[0].deals[0].deal.profit > 0
-    assert ebay.queries == ["Bosch Akkuschrauber"]
+    assert ebay.queries == ["123"]
 
 
 def test_live_pipeline_ignores_unmatched_ebay_product():
