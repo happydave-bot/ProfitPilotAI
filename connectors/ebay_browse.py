@@ -5,7 +5,7 @@ import json
 import math
 import os
 from dataclasses import dataclass
-from urllib import parse, request
+from urllib import error, parse, request
 
 from connectors.market_data import MarketListing
 from core.models import MarketOffer, Product
@@ -111,6 +111,28 @@ class EbayBrowseConnector:
         try:
             with request.urlopen(req, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode("utf-8"))
+        except error.HTTPError as exc:
+            if exc.code != 401 or self._token is None:
+                self._token = None
+                raise RuntimeError(f"eBay Browse API: {exc}") from exc
+
+            self._token = None
+            token = self._access_token()
+            req = request.Request(
+                f"{self.base_url}/buy/browse/v1/item_summary/search?{params}",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept-Language": self.config.locale,
+                    "X-EBAY-C-MARKETPLACE-ID": self.config.marketplace_id,
+                },
+                method="GET",
+            )
+            try:
+                with request.urlopen(req, timeout=self.timeout) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+            except Exception as retry_exc:
+                self._token = None
+                raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
         except Exception as exc:
             self._token = None
             raise RuntimeError(f"eBay Browse API: {exc}") from exc
