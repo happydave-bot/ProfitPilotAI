@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 import os
 
 from dotenv import load_dotenv
@@ -30,7 +31,8 @@ class DryRunNotifier:
 
     def send(self, message: str) -> None:
         self.messages.append(message)
-        logging.info("DRY RUN - würde senden:\n%s", message)
+        logging.info("DRY RUN - würde senden:
+%s", message)
 
 
 def _read_queries() -> list[str]:
@@ -39,6 +41,25 @@ def _read_queries() -> list[str]:
         return [item.strip() for item in raw.split(",") if item.strip()]
     single = os.getenv("PROFITPILOT_QUERY", "").strip()
     return [single] if single else []
+
+
+def _read_float_env(name: str, default: float) -> float:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} muss eine Zahl sein") from exc
+    if not math.isfinite(value):
+        raise ValueError(f"{name} muss endlich sein")
+    return value
+
+
+def _read_int_env(name: str, default: int) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} muss eine ganze Zahl sein") from exc
 
 
 def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
@@ -54,19 +75,25 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
     if amazon_config is None and not ebay_only:
         return None
 
+    try:
+        fee_percent = _read_float_env("PROFITPILOT_EBAY_FEE_PERCENT", 12.9)
+        packaging_cost = _read_float_env("PROFITPILOT_PACKAGING_COST", 2.0)
+        max_ebay_results = _read_int_env("PROFITPILOT_MAX_EBAY_RESULTS", 20)
+        interval = _read_float_env("PROFITPILOT_INTERVAL_SECONDS", 900)
+        service_config = LiveDealConfig(
+            ebay_fee_percent=fee_percent,
+            packaging_cost=packaging_cost,
+            max_ebay_results=max_ebay_results,
+        )
+        runner_config = RunnerConfig(interval_seconds=interval)
+    except ValueError as exc:
+        logging.error("LIVE KONFIGURATION FEHLER | %s", exc)
+        return None
+
     amazon = AmazonCreatorsConnector(amazon_config) if amazon_config is not None else None
     ebay = EbayBrowseConnector(ebay_config)
-    service = LiveDealService(
-        amazon,
-        ebay,
-        LiveDealConfig(
-            ebay_fee_percent=float(os.getenv("PROFITPILOT_EBAY_FEE_PERCENT", "12.9")),
-            packaging_cost=float(os.getenv("PROFITPILOT_PACKAGING_COST", "2.0")),
-            max_ebay_results=max(1, int(os.getenv("PROFITPILOT_MAX_EBAY_RESULTS", "20"))),
-        ),
-    )
+    service = LiveDealService(amazon, ebay, service_config)
 
-    interval = float(os.getenv("PROFITPILOT_INTERVAL_SECONDS", "900"))
     state_path = os.getenv("PROFITPILOT_STATE_FILE", "data/alert_state.json")
     store = JsonStateStore(state_path)
     monitor = AlertMonitor()
@@ -85,7 +112,7 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
         scan,
         notifier,
         monitor=monitor,
-        config=RunnerConfig(interval_seconds=interval),
+        config=runner_config,
         state_store=store,
     )
 
@@ -155,7 +182,7 @@ def main() -> None:
     runner = build_live_runner(dry_run=dry_run)
     if runner is None:
         raise SystemExit(
-            "Live-Betrieb nicht konfiguriert. Benötigt Amazon-, eBay-Zugangsdaten "
+            "Live-Betrieb nicht konfiguriert oder ungültig. Benötigt Amazon-, eBay-Zugangsdaten "
             "und PROFITPILOT_QUERY/PROFITPILOT_QUERIES. Für normalen Betrieb zusätzlich Telegram."
         )
 
