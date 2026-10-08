@@ -291,10 +291,15 @@ def test_live_deal_config_rejects_invalid_packaging_cost(value):
         LiveDealConfig(packaging_cost=value)
 
 
-@pytest.mark.parametrize("value", [0, -1, 1.5, math.inf, math.nan, True])
+@pytest.mark.parametrize("value", [0, -1, 201, 1.5, math.inf, math.nan, True])
 def test_live_deal_config_rejects_invalid_max_ebay_results(value):
     with pytest.raises(ValueError, match="Maximum eBay results"):
         LiveDealConfig(max_ebay_results=value)
+
+def test_live_deal_config_accepts_max_ebay_results_boundary():
+    assert LiveDealConfig(max_ebay_results=1).max_ebay_results == 1
+    assert LiveDealConfig(max_ebay_results=200).max_ebay_results == 200
+
 
 def test_live_deal_config_accepts_integer_max_ebay_results():
     config = LiveDealConfig(max_ebay_results=25)
