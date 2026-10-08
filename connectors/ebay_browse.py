@@ -109,7 +109,8 @@ class EbayBrowseConnector:
             except (KeyError, TypeError, ValueError):
                 continue
             title = str(item.get("title") or "").strip()
-            if not title:
+            item_url = str(item.get("itemWebUrl") or "").strip()
+            if not title or not item_url:
                 continue
             gtin = item.get("gtin")
             brand = str(item.get("brand") or "").strip()
@@ -136,7 +137,7 @@ class EbayBrowseConnector:
 
             offer = MarketOffer(
                 source="ebay",
-                url=str(item.get("itemWebUrl") or ""),
+                url=item_url,
                 price=price,
                 shipping=shipping,
                 seller=str((item.get("seller") or {}).get("username") or ""),
