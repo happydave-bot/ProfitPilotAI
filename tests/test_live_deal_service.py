@@ -1,3 +1,4 @@
+import logging
 import math
 
 import pytest
@@ -117,6 +118,47 @@ def test_applies_ebay_competition_killer_end_to_end():
 
     service = LiveDealService(FakeAmazon(), OversuppliedEbay())
     assert service.scan("Bosch Akkuschrauber") == []
+
+
+def test_ebay_query_error_falls_back_to_next_query_and_logs(caplog):
+    product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+    matched = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+
+    class FlakyEbay:
+        def __init__(self):
+            self.queries = []
+
+        def search(self, query):
+            self.queries.append(query)
+            if query == "123":
+                raise RuntimeError("temporary eBay outage")
+            return [MarketListing(
+                matched,
+                MarketOffer("ebay", "https://ebay.example/p", 85.0),
+            )]
+
+    service = LiveDealService(FakeAmazon(), FlakyEbay())
+
+    with caplog.at_level(logging.ERROR):
+        results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert service.ebay.queries == ["123", "Bosch Akkuschrauber 18V"]
+    assert "eBay-Suche fehlgeschlagen" in caplog.text
+
+
+def test_ebay_query_errors_do_not_crash_scan_when_all_queries_fail(caplog):
+    class BrokenEbay:
+        def search(self, query):
+            raise RuntimeError("eBay unavailable")
+
+    service = LiveDealService(FakeAmazon(), BrokenEbay())
+
+    with caplog.at_level(logging.ERROR):
+        results = service.scan("Bosch Akkuschrauber")
+
+    assert results == []
+    assert caplog.text.count("eBay-Suche fehlgeschlagen") == 1
 
 
 def test_live_deal_config_accepts_valid_values():
