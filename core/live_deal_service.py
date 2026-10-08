@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import math
+from urllib.parse import urlsplit, urlunsplit
 
 from connectors.market_data import MarketListing
 from core.deal_scanner import DealScanner, ScanCandidate
@@ -45,6 +46,25 @@ class LiveDealService:
         return self.ebay is not None
 
     @staticmethod
+    def _offer_key(url: str) -> str:
+        normalized = str(url or "").strip()
+        if not normalized:
+            return ""
+        parsed = urlsplit(normalized)
+        if not parsed.scheme or not parsed.netloc:
+            return normalized
+        hostname = (parsed.hostname or "").lower()
+        userinfo = ""
+        if parsed.username is not None:
+            userinfo = parsed.username
+            if parsed.password is not None:
+                userinfo += f":{parsed.password}"
+            userinfo += "@"
+        port = f":{parsed.port}" if parsed.port is not None else ""
+        netloc = f"{userinfo}{hostname}{port}"
+        return urlunsplit((parsed.scheme.lower(), netloc, parsed.path, parsed.query, ""))
+
+    @staticmethod
     def _ebay_queries(product) -> tuple[str, ...]:
         values = [product.ean, product.model, product.title]
         queries: list[str] = []
@@ -65,10 +85,11 @@ class LiveDealService:
                 seen_offer_urls: set[str] = set()
                 for ebay_listing in raw_ebay_listings:
                     offer_url = str(ebay_listing.offer.url or "").strip()
-                    if offer_url and offer_url in seen_offer_urls:
+                    offer_key = self._offer_key(offer_url)
+                    if offer_key and offer_key in seen_offer_urls:
                         continue
-                    if offer_url:
-                        seen_offer_urls.add(offer_url)
+                    if offer_key:
+                        seen_offer_urls.add(offer_key)
                     unique_ebay_listings.append(ebay_listing)
                     if len(unique_ebay_listings) >= self.config.max_ebay_results:
                         break
@@ -126,9 +147,10 @@ class LiveDealService:
         seen_offer_urls: set[str] = set()
         for candidate in candidates:
             offer_url = str(candidate.ebay.url or "").strip()
-            if offer_url and offer_url in seen_offer_urls:
+            offer_key = self._offer_key(offer_url)
+            if offer_key and offer_key in seen_offer_urls:
                 continue
-            if offer_url:
-                seen_offer_urls.add(offer_url)
+            if offer_key:
+                seen_offer_urls.add(offer_key)
             unique_candidates.append(candidate)
         return unique_candidates
