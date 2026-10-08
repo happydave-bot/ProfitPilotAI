@@ -12,6 +12,44 @@ def candidate():
     return ScanCandidate(product, amazon, ebay, 100.0, deal)
 
 
+def test_runner_starts_when_state_load_fails():
+    class BrokenStateStore:
+        def load(self):
+            raise OSError("state file unreadable")
+
+        def save(self, seen):
+            raise AssertionError("save should not be reached")
+
+    notifier = MemoryNotifier()
+    runner = AutoRunner(
+        lambda: [candidate()],
+        notifier,
+        sleep=lambda _: None,
+        state_store=BrokenStateStore(),
+    )
+
+    assert len(runner.run_once()) == 1
+    assert len(notifier.messages) == 1
+
+
+def test_runner_can_scan_after_transient_state_load_failure():
+    class FlakyStateStore:
+        def load(self):
+            raise ValueError("invalid state")
+
+        def save(self, seen):
+            raise AssertionError("save should not be reached")
+
+    runner = AutoRunner(
+        lambda: [candidate()],
+        MemoryNotifier(),
+        sleep=lambda _: None,
+        state_store=FlakyStateStore(),
+    )
+
+    assert runner.run(max_cycles=1) == 1
+
+
 def test_runner_alerts_once_across_cycles():
     notifier = MemoryNotifier()
     runner = AutoRunner(lambda: [candidate()], notifier, sleep=lambda _: None)
