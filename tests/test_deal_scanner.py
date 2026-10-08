@@ -27,3 +27,19 @@ def test_scanner_rejects_unmatched_products():
     ]
 
     assert DealScanner.scan(product, amazon, candidates, ebay_fee_percent=10.0) == []
+
+
+def test_scanner_applies_deal_killer_before_returning_candidates():
+    product = Product(title="Bosch GSR 18V", brand="Bosch", ean="123")
+    amazon = MarketOffer("amazon", "https://amazon.example/p", 100.0, seller="Amazon")
+    ebay = MarketOffer("ebay", "https://ebay.example/p", 160.0)
+
+    assert DealScanner.scan(product, amazon, [(product, ebay)], ebay_fee_percent=10.0) == []
+
+
+def test_scanner_rejects_oversupplied_ebay_offer():
+    product = Product(title="Bosch GSR 18V", brand="Bosch", ean="123")
+    amazon = MarketOffer("amazon", "https://amazon.example/p", 100.0)
+    ebay = MarketOffer("ebay", "https://ebay.example/p", 160.0, competition_count=26)
+
+    assert DealScanner.scan(product, amazon, [(product, ebay)], ebay_fee_percent=10.0) == []
