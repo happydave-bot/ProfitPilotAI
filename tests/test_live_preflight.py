@@ -65,3 +65,19 @@ def test_preflight_rejects_invalid_fee(monkeypatch):
     result = validate_live_environment()
     assert not result.ok
     assert "PROFITPILOT_EBAY_FEE_PERCENT (Zahl)" in result.missing
+
+
+def test_preflight_rejects_non_finite_fee(monkeypatch):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("PROFITPILOT_EBAY_FEE_PERCENT", "nan")
+    result = validate_live_environment()
+    assert not result.ok
+    assert "PROFITPILOT_EBAY_FEE_PERCENT (endlich)" in result.missing
+
+
+def test_preflight_rejects_non_finite_packaging(monkeypatch):
+    set_credentials(monkeypatch)
+    monkeypatch.setenv("PROFITPILOT_PACKAGING_COST", "inf")
+    result = validate_live_environment()
+    assert not result.ok
+    assert "PROFITPILOT_PACKAGING_COST (endlich)" in result.missing
