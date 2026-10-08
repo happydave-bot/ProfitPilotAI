@@ -22,6 +22,8 @@ class LiveDealConfig:
             raise ValueError("eBay fee percent must be between 0 and 100")
         if not math.isfinite(self.packaging_cost) or self.packaging_cost < 0:
             raise ValueError("Packaging cost must be finite and non-negative")
+        if isinstance(self.max_ebay_results, bool) or not isinstance(self.max_ebay_results, int):
+            raise ValueError("Maximum eBay results must be an integer")
         if self.max_ebay_results <= 0:
             raise ValueError("Maximum eBay results must be greater than zero")
 
