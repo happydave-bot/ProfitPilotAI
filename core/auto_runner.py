@@ -45,13 +45,14 @@ class AutoRunner:
     def run_once(self) -> list[ScanCandidate]:
         candidates = list(self.scan())
         fresh = self.monitor.check(candidates)
-        if fresh and self.state_store is not None:
-            self.state_store.save(self.monitor.seen)
         for candidate in fresh:
             try:
                 self.notifier.send(self._message(candidate))
             except Exception:
+                self.monitor.seen.discard(self.monitor.fingerprint(candidate))
                 logger.exception("Benachrichtigung konnte nicht gesendet werden")
+        if fresh and self.state_store is not None:
+            self.state_store.save(self.monitor.seen)
         return fresh
 
     def run(self, max_cycles: int | None = None) -> int:
