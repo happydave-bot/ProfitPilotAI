@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import math
+
 from core.models import DealInput, DealResult, Decision
 
 
@@ -9,6 +13,17 @@ class ProfitEngine:
 
     @classmethod
     def calculate(cls, data: DealInput) -> DealResult:
+        numeric_values = (
+            data.amazon.price,
+            data.amazon.shipping,
+            data.ebay.price,
+            data.ebay.shipping,
+            data.ebay_fee_percent,
+            data.packaging_cost,
+        )
+        if not all(math.isfinite(value) for value in numeric_values):
+            raise ValueError("Prices, fees and packaging cost must be finite")
+
         if data.amazon.price <= 0:
             raise ValueError("Amazon price must be greater than zero")
         if data.ebay.price < 0 or data.amazon.shipping < 0 or data.ebay.shipping < 0:
