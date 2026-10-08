@@ -6,6 +6,7 @@ import math
 import os
 import time
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 from urllib import error, parse, request
 
 from connectors.market_data import MarketListing
@@ -117,10 +118,17 @@ class EbayBrowseConnector:
     @staticmethod
     def _retry_after_seconds(exc: error.HTTPError) -> float:
         raw = exc.headers.get("Retry-After") if exc.headers is not None else None
+        text_value = str(raw).strip() if raw is not None else ""
         try:
-            delay = float(str(raw).strip())
+            delay = float(text_value)
         except (TypeError, ValueError):
-            return 0.0
+            try:
+                retry_at = parsedate_to_datetime(text_value)
+            except (TypeError, ValueError, OverflowError):
+                return 0.0
+            if retry_at.tzinfo is None:
+                return 0.0
+            delay = retry_at.timestamp() - time.time()
         if not math.isfinite(delay) or delay <= 0:
             return 0.0
         return min(delay, 5.0)
