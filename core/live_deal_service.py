@@ -23,9 +23,13 @@ class LiveDealService:
         self.ebay = ebay_connector
         self.config = config or LiveDealConfig()
 
+    @property
+    def amazon_configured(self) -> bool:
+        return self.amazon is not None
+
     def scan(self, query: str) -> list[ScanCandidate]:
         query = query.strip()
-        if not query:
+        if not query or self.amazon is None:
             return []
 
         amazon_listings = list(self.amazon.search(query))
