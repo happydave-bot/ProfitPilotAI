@@ -108,3 +108,40 @@ def test_ebay_search_skips_listing_without_actionable_url(monkeypatch):
 
     assert len(results) == 1
     assert results[0].offer.url == "https://ebay.example/item/2"
+
+
+def test_ebay_search_skips_zero_or_negative_prices(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [
+                {
+                    "title": "Invalid zero price",
+                    "price": {"value": "0"},
+                    "itemWebUrl": "https://ebay.example/zero",
+                },
+                {
+                    "title": "Invalid negative price",
+                    "price": {"value": "-5"},
+                    "itemWebUrl": "https://ebay.example/negative",
+                },
+                {
+                    "title": "Valid Bosch GSR",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://ebay.example/valid",
+                },
+            ]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.price == 79.99
+    assert results[0].offer.url == "https://ebay.example/valid"
