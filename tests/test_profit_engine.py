@@ -52,3 +52,19 @@ def test_ebay_fee_includes_shipping_and_fixed_order_fee():
     result = ProfitEngine.calculate(deal)
 
     assert result.profit == 20.29
+
+
+def test_ebay_fixed_order_fee_is_035_at_or_below_10_euros():
+    deal = make_deal(amazon_price=5.0, ebay_price=10.0, fee=0.0)
+
+    result = ProfitEngine.calculate(deal)
+
+    assert result.profit == 2.65
+
+
+def test_ebay_fixed_order_fee_is_045_above_10_euros():
+    deal = make_deal(amazon_price=5.0, ebay_price=10.01, fee=0.0)
+
+    result = ProfitEngine.calculate(deal)
+
+    assert result.profit == 2.01
