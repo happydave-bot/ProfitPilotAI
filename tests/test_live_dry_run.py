@@ -17,3 +17,29 @@ def test_once_and_dry_run_flags_are_supported():
     notifier = DryRunNotifier()
     notifier.send("test")
     assert notifier.messages == ["test"]
+
+
+
+def test_ebay_connectivity_test_uses_query_without_runner(monkeypatch, capsys):
+    from run_live import run_ebay_connectivity_test
+
+    monkeypatch.setenv("EBAY_CLIENT_ID", "client")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "secret")
+    monkeypatch.setenv("PROFITPILOT_QUERY", "Bosch Akkuschrauber")
+
+    class FakeConnector:
+        def __init__(self, config):
+            self.config = config
+
+        def search(self, query):
+            assert query == "Bosch Akkuschrauber"
+            from connectors.market_data import MarketListing
+            from core.models import MarketOffer, Product
+            return [MarketListing(
+                product=Product(title="Bosch GSR"),
+                offer=MarketOffer(source="ebay", url="https://example.test/item", price=99.0),
+            )]
+
+    monkeypatch.setattr("run_live.EbayBrowseConnector", FakeConnector)
+    assert run_ebay_connectivity_test() == 0
+    assert "OK - 1 Angebote gefunden" in capsys.readouterr().out
