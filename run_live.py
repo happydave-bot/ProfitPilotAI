@@ -31,8 +31,7 @@ class DryRunNotifier:
 
     def send(self, message: str) -> None:
         self.messages.append(message)
-        logging.info("DRY RUN - würde senden:
-%s", message)
+        logging.info("DRY RUN - würde senden:\n%s", message)
 
 
 def _read_queries() -> list[str]:
