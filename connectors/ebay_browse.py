@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import os
 from dataclasses import dataclass
 from urllib import parse, request
@@ -108,7 +109,7 @@ class EbayBrowseConnector:
                 price = float((item.get("price") or {})["value"])
             except (KeyError, TypeError, ValueError):
                 continue
-            if price <= 0:
+            if not math.isfinite(price) or price <= 0:
                 continue
             title = str(item.get("title") or "").strip()
             item_url = str(item.get("itemWebUrl") or "").strip()
@@ -145,7 +146,7 @@ class EbayBrowseConnector:
                     cost = float(raw_cost)
                 except (TypeError, ValueError):
                     continue
-                if cost >= 0:
+                if math.isfinite(cost) and cost >= 0:
                     shipping_costs.append(cost)
             if not shipping_costs:
                 continue
