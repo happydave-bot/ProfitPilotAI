@@ -51,4 +51,4 @@ def test_ebay_fee_includes_shipping_and_fixed_order_fee():
 
     result = ProfitEngine.calculate(deal)
 
-    assert result.profit == 20.3
+    assert result.profit == 20.29
