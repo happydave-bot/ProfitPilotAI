@@ -68,3 +68,72 @@ def test_ebay_fixed_order_fee_is_045_above_10_euros():
     result = ProfitEngine.calculate(deal)
 
     assert result.profit == 2.56
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "amazon_price",
+        "amazon_shipping",
+        "ebay_price",
+        "ebay_shipping",
+        "fee",
+        "packaging_cost",
+    ],
+)
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_financial_values_are_rejected(field, value):
+    kwargs = {"amazon_price": 50.0, "ebay_price": 100.0, "fee": 10.0}
+    if field == "packaging_cost":
+        deal = make_deal(**kwargs)
+        deal = DealInput(
+            product=deal.product,
+            amazon=deal.amazon,
+            ebay=deal.ebay,
+            ebay_fee_percent=deal.ebay_fee_percent,
+            packaging_cost=value,
+        )
+    elif field == "amazon_shipping":
+        deal = make_deal(**kwargs)
+        deal = DealInput(
+            product=deal.product,
+            amazon=MarketOffer(
+                "amazon",
+                "https://amazon.example/test",
+                deal.amazon.price,
+                shipping=value,
+            ),
+            ebay=deal.ebay,
+            ebay_fee_percent=deal.ebay_fee_percent,
+            packaging_cost=deal.packaging_cost,
+        )
+    elif field == "ebay_shipping":
+        deal = make_deal(**kwargs)
+        deal = DealInput(
+            product=deal.product,
+            amazon=deal.amazon,
+            ebay=MarketOffer(
+                "ebay",
+                "https://ebay.example/test",
+                deal.ebay.price,
+                shipping=value,
+            ),
+            ebay_fee_percent=deal.ebay_fee_percent,
+            packaging_cost=deal.packaging_cost,
+        )
+    elif field == "fee":
+        deal = make_deal(**kwargs)
+        deal = DealInput(
+            product=deal.product,
+            amazon=deal.amazon,
+            ebay=deal.ebay,
+            ebay_fee_percent=value,
+            packaging_cost=deal.packaging_cost,
+        )
+    elif field == "amazon_price":
+        deal = make_deal(amazon_price=value, ebay_price=100.0, fee=10.0)
+    else:
+        deal = make_deal(amazon_price=50.0, ebay_price=value, fee=10.0)
+
+    with pytest.raises(ValueError, match="finite"):
+        ProfitEngine.calculate(deal)
