@@ -111,9 +111,10 @@ class EbayBrowseConnector:
         results: list[MarketListing] = []
         total_results = data.get("total")
         try:
-            competition_count = int(total_results) if total_results is not None else None
+            parsed_total = int(total_results) if total_results is not None else None
         except (TypeError, ValueError):
-            competition_count = None
+            parsed_total = None
+        competition_count = parsed_total if parsed_total is not None and parsed_total >= 0 else None
 
         for item in data.get("itemSummaries", []):
             try:
