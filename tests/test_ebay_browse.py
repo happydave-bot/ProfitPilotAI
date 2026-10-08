@@ -594,3 +594,20 @@ def test_ebay_search_rejects_invalid_competition_count(monkeypatch):
 
     assert len(results) == 1
     assert results[0].offer.competition_count is None
+
+
+def test_ebay_connector_rejects_invalid_timeout():
+    config = EbayBrowseConfig("id", "secret")
+
+    for timeout in (0, -1, float("nan"), float("inf"), True):
+        try:
+            EbayBrowseConnector(config, timeout=timeout)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Expected ValueError for timeout={timeout!r}")
+
+
+def test_ebay_connector_accepts_positive_timeout():
+    connector = EbayBrowseConnector(EbayBrowseConfig("id", "secret"), timeout=7.5)
+    assert connector.timeout == 7.5
