@@ -61,11 +61,17 @@ class LiveDealService:
                 if parsed.password is not None:
                     userinfo += f":{parsed.password}"
                 userinfo += "@"
-            port = f":{parsed.port}" if parsed.port is not None else ""
+            port_value = parsed.port
+            if port_value is not None:
+                default_port = 443 if parsed.scheme.lower() == "https" else 80 if parsed.scheme.lower() == "http" else None
+                port = "" if default_port == port_value else f":{port_value}"
+            else:
+                port = ""
         except ValueError:
             return normalized
         netloc = f"{userinfo}{hostname}{port}"
-        return urlunsplit((parsed.scheme.lower(), netloc, parsed.path, parsed.query, ""))
+        path = parsed.path.rstrip("/") or "/"
+        return urlunsplit((parsed.scheme.lower(), netloc, path, parsed.query, ""))
 
     @staticmethod
     def _ebay_queries(product) -> tuple[str, ...]:
