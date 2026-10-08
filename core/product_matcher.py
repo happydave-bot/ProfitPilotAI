@@ -66,6 +66,11 @@ class ProductMatcher:
                 return MatchResult(100.0, True, ("ASIN stimmt überein",))
             return MatchResult(0.0, False, ("ASIN stimmt nicht überein",))
 
+        if left.model and right.model:
+            if cls._norm(left.model) == cls._norm(right.model):
+                return MatchResult(100.0, True, ("Modell stimmt überein",))
+            return MatchResult(0.0, False, ("Modell stimmt nicht überein",))
+
         if left_title and left_title == right_title:
             return MatchResult(100.0, True, ("Produkttitel stimmt exakt überein",))
 
