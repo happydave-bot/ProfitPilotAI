@@ -108,3 +108,56 @@ def test_telegram_accepts_success_response(monkeypatch):
     notifier = TelegramNotifier(token="secret", chat_id="123")
 
     notifier.send("test")
+
+    
+def test_telegram_retries_transient_429(monkeypatch):
+    calls = 0
+    sleeps = []
+
+    class FakeResponse:
+        status = 429
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"ok": false, "parameters": {"retry_after": 2}}'
+
+    def fake_urlopen(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return FakeResponse()
+
+        class Success:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return b'{"ok": true, "result": {"message_id": 1}}'
+
+        return Success()
+
+    monkeypatch.setattr("core.notifiers.request.urlopen", fake_urlopen)
+    notifier = TelegramNotifier(token="secret", chat_id="123", sleep=sleeps.append)
+    notifier.send("test")
+
+    assert calls == 2
+    assert sleeps == [2.0]
+
+
+def test_telegram_rejects_invalid_max_retries():
+    for value in (-1, 3, True, 1.5):
+        try:
+            TelegramNotifier(token="secret", chat_id="123", max_retries=value)
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "zwischen 0 und 2" in str(exc)
