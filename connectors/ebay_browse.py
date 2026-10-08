@@ -112,7 +112,10 @@ class EbayBrowseConnector:
     @staticmethod
     def _is_actionable_url(value: str) -> bool:
         parsed = parse.urlparse(value)
-        return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            return False
+        host = parsed.hostname.lower().rstrip(".")
+        return host == "ebay.com" or host.endswith(".ebay.com") or host == "ebay.de" or host.endswith(".ebay.de")
 
     @staticmethod
     def _is_timeout_exception(exc: Exception) -> bool:
