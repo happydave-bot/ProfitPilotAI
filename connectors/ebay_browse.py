@@ -106,7 +106,14 @@ class EbayBrowseConnector:
             if not title:
                 continue
             gtin = item.get("gtin")
-            product = Product(title=title, ean=str(gtin) if gtin else None)
+            brand = str(item.get("brand") or "").strip()
+            mpn = str(item.get("mpn") or "").strip()
+            product = Product(
+                title=title,
+                brand=brand,
+                ean=str(gtin) if gtin else None,
+                model=mpn or None,
+            )
             offer = MarketOffer(
                 source="ebay",
                 url=str(item.get("itemWebUrl") or ""),
