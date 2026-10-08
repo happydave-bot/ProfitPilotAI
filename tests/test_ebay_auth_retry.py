@@ -152,8 +152,11 @@ def test_ebay_search_ignores_invalid_retry_after_header(monkeypatch):
     def fake_sleep(delay):
         delays.append(delay)
 
+    calls = []
+
     def fake_urlopen(req, timeout):
-        if not delays:
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) == 1:
             raise HTTPError(
                 req.full_url,
                 503,
