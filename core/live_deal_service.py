@@ -24,8 +24,8 @@ class LiveDealConfig:
             raise ValueError("Packaging cost must be finite and non-negative")
         if isinstance(self.max_ebay_results, bool) or not isinstance(self.max_ebay_results, int):
             raise ValueError("Maximum eBay results must be an integer")
-        if self.max_ebay_results <= 0:
-            raise ValueError("Maximum eBay results must be greater than zero")
+        if self.max_ebay_results < 1 or self.max_ebay_results > 200:
+            raise ValueError("Maximum eBay results must be between 1 and 200")
 
 
 class LiveDealService:
