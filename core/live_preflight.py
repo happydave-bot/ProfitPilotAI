@@ -26,14 +26,20 @@ def validate_live_environment() -> LivePreflight:
     missing: list[str] = []
     warnings: list[str] = []
 
+    ebay_only = os.getenv("PROFITPILOT_EBAY_ONLY", "").strip().lower() in {"1", "true", "yes"}
     required = {
-        "AMAZON_CREATORS_CLIENT_ID": os.getenv("AMAZON_CREATORS_CLIENT_ID", "").strip(),
-        "AMAZON_CREATORS_CLIENT_SECRET": os.getenv("AMAZON_CREATORS_CLIENT_SECRET", "").strip(),
-        "AMAZON_PARTNER_TAG": os.getenv("AMAZON_PARTNER_TAG", "").strip(),
         "EBAY_CLIENT_ID": os.getenv("EBAY_CLIENT_ID", "").strip(),
         "EBAY_CLIENT_SECRET": os.getenv("EBAY_CLIENT_SECRET", "").strip(),
     }
+    if not ebay_only:
+        required.update({
+            "AMAZON_CREATORS_CLIENT_ID": os.getenv("AMAZON_CREATORS_CLIENT_ID", "").strip(),
+            "AMAZON_CREATORS_CLIENT_SECRET": os.getenv("AMAZON_CREATORS_CLIENT_SECRET", "").strip(),
+            "AMAZON_PARTNER_TAG": os.getenv("AMAZON_PARTNER_TAG", "").strip(),
+        })
     missing.extend(name for name, value in required.items() if not value)
+    if ebay_only:
+        warnings.append("eBay-only-Modus: Ohne Amazon-Quelle werden keine Cross-Market-Deals erzeugt.")
 
     if not os.getenv("PROFITPILOT_QUERY", "").strip() and not os.getenv("PROFITPILOT_QUERIES", "").strip():
         missing.append("PROFITPILOT_QUERY oder PROFITPILOT_QUERIES")
