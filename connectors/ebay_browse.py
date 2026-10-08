@@ -4,6 +4,7 @@ import base64
 import json
 import math
 import os
+import time
 from dataclasses import dataclass
 from urllib import error, parse, request
 
@@ -97,6 +98,17 @@ class EbayBrowseConnector:
         self._token = token
         return token
 
+    @staticmethod
+    def _retry_after_seconds(exc: error.HTTPError) -> float:
+        raw = exc.headers.get("Retry-After") if exc.headers is not None else None
+        try:
+            delay = float(str(raw).strip())
+        except (TypeError, ValueError):
+            return 0.0
+        if not math.isfinite(delay) or delay <= 0:
+            return 0.0
+        return min(delay, 5.0)
+
     def search(self, query: str) -> list[MarketListing]:
         query = query.strip()
         if not query:
@@ -135,6 +147,9 @@ class EbayBrowseConnector:
                     self._token = None
                     raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
             elif exc.code == 429 or 500 <= exc.code <= 599:
+                delay = self._retry_after_seconds(exc)
+                if delay:
+                    time.sleep(delay)
                 try:
                     with request.urlopen(req, timeout=self.timeout) as response:
                         data = json.loads(response.read().decode("utf-8"))
