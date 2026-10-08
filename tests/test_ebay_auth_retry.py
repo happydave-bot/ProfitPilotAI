@@ -226,7 +226,7 @@ def test_ebay_search_ignores_invalid_retry_after_header(monkeypatch):
     monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
 
     assert connector.search("Bosch Akkuschrauber") == []
-    assert delays == []
+    assert delays == [0.5]
 
 
 def test_search_request_uses_current_token_and_config(monkeypatch):
