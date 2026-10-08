@@ -132,3 +132,19 @@ def test_live_pipeline_falls_back_to_title_when_identifiers_have_no_deal():
 
     assert len(results) == 1
     assert ebay.queries == ["4000000000001", "06019N0E2B", "Bosch GSR 18V-65"]
+
+
+def test_live_pipeline_empty_query_does_not_call_amazon():
+    amazon = FakeConnector([])
+    ebay = FakeConnector([])
+
+    results = LiveMarketPipeline(amazon, ebay).scan("   ")
+
+    assert results == []
+    assert amazon.queries == []
+    assert ebay.queries == []
+
+
+def test_live_pipeline_missing_connector_returns_no_results():
+    assert LiveMarketPipeline(None, FakeConnector([])).scan("Bosch") == []
+    assert LiveMarketPipeline(FakeConnector([]), None).scan("Bosch") == []
