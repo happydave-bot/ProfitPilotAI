@@ -30,8 +30,8 @@ class EbayBrowseConfig:
             raise ValueError("eBay search limit must be between 1 and 200")
         if isinstance(self.max_retries, bool) or not isinstance(self.max_retries, int):
             raise ValueError("eBay max retries must be an integer")
-        if self.max_retries < 0 or self.max_retries > 3:
-            raise ValueError("eBay max retries must be between 0 and 3")
+        if self.max_retries < 0 or self.max_retries > 2:
+            raise ValueError("eBay max retries must be between 0 and 2")
 
     @classmethod
     def from_env(cls) -> "EbayBrowseConfig | None":
