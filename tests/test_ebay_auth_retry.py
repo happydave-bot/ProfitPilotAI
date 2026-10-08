@@ -58,3 +58,58 @@ def test_ebay_search_does_not_retry_non_401_http_error(monkeypatch):
         raise AssertionError("Expected RuntimeError")
 
     assert connector._token is None
+
+    
+def test_ebay_search_retries_once_after_429(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) == 1:
+            raise HTTPError(req.full_url, 429, "Too Many Requests", {}, None)
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert calls == ["Bearer token", "Bearer token"]
+    assert connector._token == "token"
+
+
+def test_ebay_search_retries_once_after_server_error(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) == 1:
+            raise HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert calls == ["Bearer token", "Bearer token"]
+
+
+def test_ebay_search_fails_after_transient_error_retry(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    def fake_urlopen(req, timeout):
+        raise HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    try:
+        connector.search("Bosch Akkuschrauber")
+    except RuntimeError as exc:
+        assert "eBay Browse API" in str(exc)
+        assert "HTTP Error 503" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+    assert connector._token is None
