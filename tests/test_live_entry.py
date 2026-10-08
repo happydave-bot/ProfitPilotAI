@@ -28,7 +28,7 @@ def test_ebay_listing_product_keeps_brand_and_mpn():
             return False
 
         def read(self):
-            return b'{"itemSummaries":[{"title":"Bosch GSR 18V-65","gtin":"4000000000001","brand":"Bosch","mpn":"06019N0E2B","price":{"value":"85.00"},"itemWebUrl":"https://ebay.example"}]}'
+            return b'{"itemSummaries":[{"title":"Bosch GSR 18V-65","gtin":"4000000000001","brand":"Bosch","mpn":"06019N0E2B","price":{"value":"85.00"},"shippingOptions":[{"shippingCost":{"value":"0.00"}}],"itemWebUrl":"https://ebay.example"}]}'
 
     import connectors.ebay_browse as module
 
