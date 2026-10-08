@@ -243,7 +243,9 @@ def test_search_request_uses_current_token_and_config(monkeypatch):
 
     req = connector._search_request("Bosch Akkuschrauber", "fresh-token")
 
-    assert req.full_url.endswith("/buy/browse/v1/item_summary/search?q=Bosch+Akkuschrauber&limit=7")
+    assert req.full_url.endswith(
+        "/buy/browse/v1/item_summary/search?q=Bosch+Akkuschrauber&limit=7&filter=buyingOptions%3A%7BFIXED_PRICE%7D"
+    )
     assert req.headers["Authorization"] == "Bearer fresh-token"
     assert req.headers["Accept-language"] == "de-DE"
     assert req.headers["X-ebay-c-marketplace-id"] == "EBAY_DE"
