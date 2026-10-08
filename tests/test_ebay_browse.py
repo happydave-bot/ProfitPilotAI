@@ -102,7 +102,7 @@ def test_ebay_search_normalizes_browse_response(monkeypatch):
         def read(self):
             return json.dumps({"itemSummaries": [
                 {"title": "Bosch GSR 18V", "gtin": "1234567890123",
-                 "price": {"value": "79.99"}, "itemWebUrl": "https://ebay.example/item/1",
+                 "price": {"value": "79.99"}, "itemWebUrl": "https://www.ebay.de/item/1",
                  "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                  "seller": {"username": "seller1"}},
                 {"title": "No price"},
@@ -141,7 +141,7 @@ def test_ebay_search_uses_lowest_valid_shipping_option(monkeypatch):
                 {
                     "title": "Bosch GSR 18V",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/item/1",
+                    "itemWebUrl": "https://www.ebay.de/item/1",
                     "shippingOptions": [
                         {"shippingCost": {"value": "9.99"}},
                         {"shippingCost": {"value": "0.00"}},
@@ -176,7 +176,7 @@ def test_ebay_search_skips_listing_without_actionable_url(monkeypatch):
                 {
                     "title": "Bosch GSR 18V",
                     "price": {"value": "84.99"},
-                    "itemWebUrl": "https://ebay.example/item/2",
+                    "itemWebUrl": "https://www.ebay.de/item/2",
                     "shippingOptions": [{"shippingCost": {"value": "3.99"}}],
                 },
             ]}).encode()
@@ -186,7 +186,7 @@ def test_ebay_search_skips_listing_without_actionable_url(monkeypatch):
     results = connector.search("Bosch Akkuschrauber")
 
     assert len(results) == 1
-    assert results[0].offer.url == "https://ebay.example/item/2"
+    assert results[0].offer.url == "https://www.ebay.de/item/2"
 
 
 def test_ebay_search_skips_non_actionable_urls(monkeypatch):
@@ -242,19 +242,19 @@ def test_ebay_search_skips_zero_or_negative_prices(monkeypatch):
                 {
                     "title": "Invalid zero price",
                     "price": {"value": "0"},
-                    "itemWebUrl": "https://ebay.example/zero",
+                    "itemWebUrl": "https://www.ebay.de/zero",
                     "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
                 },
                 {
                     "title": "Invalid negative price",
                     "price": {"value": "-5"},
-                    "itemWebUrl": "https://ebay.example/negative",
+                    "itemWebUrl": "https://www.ebay.de/negative",
                     "shippingOptions": [{"shippingCost": {"value": "2.99"}}],
                 },
                 {
                     "title": "Valid Bosch GSR",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/valid",
+                    "itemWebUrl": "https://www.ebay.de/valid",
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 },
             ]}).encode()
@@ -265,7 +265,7 @@ def test_ebay_search_skips_zero_or_negative_prices(monkeypatch):
 
     assert len(results) == 1
     assert results[0].offer.price == 79.99
-    assert results[0].offer.url == "https://ebay.example/valid"
+    assert results[0].offer.url == "https://www.ebay.de/valid"
 
 
 def test_ebay_search_skips_listing_without_shipping_data(monkeypatch):
@@ -282,12 +282,12 @@ def test_ebay_search_skips_listing_without_shipping_data(monkeypatch):
                 {
                     "title": "Bosch GSR ohne Versanddaten",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/item/1",
+                    "itemWebUrl": "https://www.ebay.de/item/1",
                 },
                 {
                     "title": "Bosch GSR mit kostenlosem Versand",
                     "price": {"value": "84.99"},
-                    "itemWebUrl": "https://ebay.example/item/2",
+                    "itemWebUrl": "https://www.ebay.de/item/2",
                     "shippingOptions": [{"shippingCost": {"value": "0.00"}}],
                 },
             ]}).encode()
@@ -298,7 +298,7 @@ def test_ebay_search_skips_listing_without_shipping_data(monkeypatch):
 
     assert len(results) == 1
     assert results[0].offer.shipping == 0.0
-    assert results[0].offer.url == "https://ebay.example/item/2"
+    assert results[0].offer.url == "https://www.ebay.de/item/2"
 
 
 def test_ebay_search_skips_listing_with_only_invalid_shipping_costs(monkeypatch):
@@ -315,13 +315,13 @@ def test_ebay_search_skips_listing_with_only_invalid_shipping_costs(monkeypatch)
                 {
                     "title": "Bosch GSR",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/item/1",
+                    "itemWebUrl": "https://www.ebay.de/item/1",
                     "shippingOptions": [{"shippingCost": {"value": "invalid"}}],
                 },
                 {
                     "title": "Bosch GSR gültig",
                     "price": {"value": "84.99"},
-                    "itemWebUrl": "https://ebay.example/item/2",
+                    "itemWebUrl": "https://www.ebay.de/item/2",
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 },
             ]}).encode()
@@ -348,14 +348,14 @@ def test_ebay_search_skips_auction_only_listing(monkeypatch):
                 {
                     "title": "Bosch GSR Auktion",
                     "price": {"value": "49.99"},
-                    "itemWebUrl": "https://ebay.example/auction",
+                    "itemWebUrl": "https://www.ebay.de/auction",
                     "buyingOptions": ["AUCTION"],
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 },
                 {
                     "title": "Bosch GSR Sofort-Kaufen",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/fixed",
+                    "itemWebUrl": "https://www.ebay.de/fixed",
                     "buyingOptions": ["FIXED_PRICE"],
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 },
@@ -366,7 +366,7 @@ def test_ebay_search_skips_auction_only_listing(monkeypatch):
     results = connector.search("Bosch Akkuschrauber")
 
     assert len(results) == 1
-    assert results[0].offer.url == "https://ebay.example/fixed"
+    assert results[0].offer.url == "https://www.ebay.de/fixed"
 
 
 def test_ebay_search_keeps_listing_when_buying_options_are_missing(monkeypatch):
@@ -382,7 +382,7 @@ def test_ebay_search_keeps_listing_when_buying_options_are_missing(monkeypatch):
             return json.dumps({"itemSummaries": [{
                 "title": "Bosch GSR ohne BuyingOptions",
                 "price": {"value": "79.99"},
-                "itemWebUrl": "https://ebay.example/item/1",
+                "itemWebUrl": "https://www.ebay.de/item/1",
                 "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
             }]}).encode()
 
@@ -407,19 +407,19 @@ def test_ebay_search_skips_non_finite_price_and_shipping(monkeypatch):
                 {
                     "title": "Ungültiger Preis",
                     "price": {"value": "Infinity"},
-                    "itemWebUrl": "https://ebay.example/infinite-price",
+                    "itemWebUrl": "https://www.ebay.de/infinite-price",
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 },
                 {
                     "title": "Ungültiger Versand",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/infinite-shipping",
+                    "itemWebUrl": "https://www.ebay.de/infinite-shipping",
                     "shippingOptions": [{"shippingCost": {"value": "Infinity"}}],
                 },
                 {
                     "title": "Gültiges Angebot",
                     "price": {"value": "84.99"},
-                    "itemWebUrl": "https://ebay.example/valid",
+                    "itemWebUrl": "https://www.ebay.de/valid",
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 },
             ]}).encode()
@@ -525,7 +525,7 @@ def test_ebay_search_skips_non_object_item_summary(monkeypatch):
                     {
                         "title": "Bosch GSR",
                         "price": {"value": "79.99"},
-                        "itemWebUrl": "https://ebay.example/item/1",
+                        "itemWebUrl": "https://www.ebay.de/item/1",
                         "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                     },
                 ],
@@ -553,19 +553,19 @@ def test_ebay_search_skips_boolean_price_and_shipping_values(monkeypatch):
                 {
                     "title": "Boolean price",
                     "price": {"value": True},
-                    "itemWebUrl": "https://ebay.example/bool-price",
+                    "itemWebUrl": "https://www.ebay.de/bool-price",
                     "shippingOptions": [{"shippingCost": {"value": 4.99}}],
                 },
                 {
                     "title": "Boolean shipping",
                     "price": {"value": 79.99},
-                    "itemWebUrl": "https://ebay.example/bool-shipping",
+                    "itemWebUrl": "https://www.ebay.de/bool-shipping",
                     "shippingOptions": [{"shippingCost": {"value": False}}],
                 },
                 {
                     "title": "Valid offer",
                     "price": {"value": 84.99},
-                    "itemWebUrl": "https://ebay.example/valid",
+                    "itemWebUrl": "https://www.ebay.de/valid",
                     "shippingOptions": [{"shippingCost": {"value": 4.99}}],
                 },
             ]}).encode()
@@ -594,7 +594,7 @@ def test_ebay_search_ignores_boolean_competition_count(monkeypatch):
                 "itemSummaries": [{
                     "title": "Bosch GSR",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/item/1",
+                    "itemWebUrl": "https://www.ebay.de/item/1",
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 }],
             }).encode()
@@ -622,7 +622,7 @@ def test_ebay_search_rejects_invalid_competition_count(monkeypatch):
                 "itemSummaries": [{
                     "title": "Bosch GSR",
                     "price": {"value": "79.99"},
-                    "itemWebUrl": "https://ebay.example/item/1",
+                    "itemWebUrl": "https://www.ebay.de/item/1",
                     "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
                 }],
             }).encode()
