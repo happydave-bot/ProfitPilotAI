@@ -44,10 +44,13 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
     amazon_config = AmazonCreatorsConfig.from_env()
     ebay_config = EbayBrowseConfig.from_env()
     queries = _read_queries()
-    if amazon_config is None or ebay_config is None or not queries:
+    ebay_only = os.getenv("PROFITPILOT_EBAY_ONLY", "").lower() in {"1", "true", "yes"}
+    if ebay_config is None or not queries:
+        return None
+    if amazon_config is None and not ebay_only:
         return None
 
-    amazon = AmazonCreatorsConnector(amazon_config)
+    amazon = AmazonCreatorsConnector(amazon_config) if amazon_config is not None else None
     ebay = EbayBrowseConnector(ebay_config)
     service = LiveDealService(
         amazon,
