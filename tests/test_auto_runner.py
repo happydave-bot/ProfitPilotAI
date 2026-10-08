@@ -35,3 +35,12 @@ def test_runner_rejects_invalid_interval():
         assert False, "expected ValueError"
     except ValueError as exc:
         assert "größer als 0" in str(exc)
+
+
+def test_runner_rejects_non_finite_interval():
+    for value in (float("inf"), float("-inf"), float("nan")):
+        try:
+            AutoRunner(lambda: [], MemoryNotifier(), config=RunnerConfig(interval_seconds=value))
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "endlich" in str(exc)
