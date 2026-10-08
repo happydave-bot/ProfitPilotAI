@@ -110,6 +110,36 @@ def test_deduplicates_repeated_ebay_offer_urls():
     assert results[0].ebay.url == "https://ebay.example/p"
 
 
+def test_deduplicates_before_ebay_result_limit():
+    product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+
+    class LimitedEbay:
+        def search(self, query):
+            listings = []
+            for url in ("https://ebay.example/duplicate", "https://ebay.example/duplicate", "https://ebay.example/unique"):
+                listings.append(
+                    MarketListing(
+                        product,
+                        MarketOffer("ebay", url, 85.0),
+                    )
+                )
+            return listings
+
+    service = LiveDealService(
+        FakeAmazon(),
+        LimitedEbay(),
+        LiveDealConfig(max_ebay_results=2),
+    )
+
+    results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 2
+    assert {result.ebay.url for result in results} == {
+        "https://ebay.example/duplicate",
+        "https://ebay.example/unique",
+    }
+
+
 def test_deduplicates_same_ebay_offer_across_amazon_listings():
     product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
     offer = MarketOffer("amazon", "https://amazon.example/p", 40.0)
