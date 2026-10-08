@@ -28,3 +28,53 @@ def test_live_service_returns_profitable_cross_market_deal():
 def test_live_service_empty_query_returns_no_results():
     service = LiveDealService(FakeAmazon(), FakeEbay())
     assert service.scan("   ") == []
+
+
+class RecordingEbay:
+    def __init__(self, listings_by_query):
+        self.listings_by_query = listings_by_query
+        self.queries = []
+
+    def search(self, query):
+        self.queries.append(query)
+        return list(self.listings_by_query.get(query, []))
+
+
+def test_live_service_prefers_ean_before_title():
+    product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+    amazon = FakeAmazon()
+    ebay = RecordingEbay({
+        "123": [MarketListing(
+            product,
+            MarketOffer("ebay", "https://ebay.example/p", 85.0),
+        )],
+    })
+    service = LiveDealService(amazon, ebay)
+
+    results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert ebay.queries == ["123"]
+
+
+def test_live_service_falls_back_to_title_when_identifier_finds_no_deal():
+    product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+    unmatched = Product(title="Makita Bohrmaschine", brand="Makita", ean="999")
+    matched = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+    amazon = FakeAmazon()
+    ebay = RecordingEbay({
+        "123": [MarketListing(
+            unmatched,
+            MarketOffer("ebay", "https://ebay.example/unmatched", 85.0),
+        )],
+        "Bosch Akkuschrauber 18V": [MarketListing(
+            matched,
+            MarketOffer("ebay", "https://ebay.example/matched", 85.0),
+        )],
+    })
+    service = LiveDealService(amazon, ebay)
+
+    results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert ebay.queries == ["123", "Bosch Akkuschrauber 18V"]
