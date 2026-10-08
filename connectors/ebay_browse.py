@@ -157,8 +157,9 @@ class EbayBrowseConnector:
                 if not transient or retries >= self.config.max_retries:
                     raise
                 delay = self._retry_after_seconds(exc)
-                if delay:
-                    time.sleep(delay)
+                if not delay:
+                    delay = min(0.5 * (2 ** retries), 5.0)
+                time.sleep(delay)
                 retries += 1
             except Exception as exc:
                 if not self._is_timeout_exception(exc) or retries >= self.config.max_retries:
