@@ -110,6 +110,11 @@ class EbayBrowseConnector:
         return token
 
     @staticmethod
+    def _is_actionable_url(value: str) -> bool:
+        parsed = parse.urlparse(value)
+        return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+    @staticmethod
     def _is_timeout_exception(exc: Exception) -> bool:
         if isinstance(exc, TimeoutError):
             return True
@@ -240,7 +245,7 @@ class EbayBrowseConnector:
                 }
                 if normalized_buying_options and "FIXED_PRICE" not in normalized_buying_options:
                     continue
-            if not title or not item_url:
+            if not title or not self._is_actionable_url(item_url):
                 continue
             gtin = item.get("gtin")
             brand = str(item.get("brand") or "").strip()
