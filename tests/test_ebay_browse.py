@@ -13,6 +13,65 @@ def test_ebay_config_reads_environment(monkeypatch):
     assert config.limit == 7
 
 
+def test_ebay_oauth_rejects_non_object_response(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps(["not", "an", "object"]).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    try:
+        connector._access_token()
+    except RuntimeError as exc:
+        assert str(exc) == "eBay OAuth: ungültige JSON-Antwort"
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+
+def test_ebay_oauth_rejects_non_string_access_token(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"access_token": 12345}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    try:
+        connector._access_token()
+    except RuntimeError as exc:
+        assert str(exc) == "eBay OAuth: kein Access Token erhalten"
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+
+def test_ebay_oauth_strips_access_token_whitespace(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"access_token": "  token-with-space  "}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    assert connector._access_token() == "token-with-space"
+    assert connector._token == "token-with-space"
+
+
 def test_ebay_search_normalizes_browse_response(monkeypatch):
     connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
     connector._token = "token"
