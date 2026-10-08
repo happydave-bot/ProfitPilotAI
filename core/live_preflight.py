@@ -42,14 +42,11 @@ def validate_live_environment(dry_run: bool | None = None) -> LivePreflight:
             "AMAZON_CREATORS_CLIENT_SECRET": os.getenv("AMAZON_CREATORS_CLIENT_SECRET", "").strip(),
             "AMAZON_PARTNER_TAG": os.getenv("AMAZON_PARTNER_TAG", "").strip(),
         })
-    if not ebay_only:
+    if not ebay_only and not dry_run:
         required.update({
-            "PROFITPILOT_TELEGRAM_TOKEN": "" if dry_run else os.getenv("PROFITPILOT_TELEGRAM_TOKEN", "").strip(),
-            "PROFITPILOT_TELEGRAM_CHAT_ID": "" if dry_run else os.getenv("PROFITPILOT_TELEGRAM_CHAT_ID", "").strip(),
+            "PROFITPILOT_TELEGRAM_TOKEN": os.getenv("PROFITPILOT_TELEGRAM_TOKEN", "").strip(),
+            "PROFITPILOT_TELEGRAM_CHAT_ID": os.getenv("PROFITPILOT_TELEGRAM_CHAT_ID", "").strip(),
         })
-    else:
-        required.pop("PROFITPILOT_TELEGRAM_TOKEN", None)
-        required.pop("PROFITPILOT_TELEGRAM_CHAT_ID", None)
 
     query = os.getenv("PROFITPILOT_QUERY", "").strip()
     queries = os.getenv("PROFITPILOT_QUERIES", "").strip()
