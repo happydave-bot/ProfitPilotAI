@@ -95,8 +95,7 @@ class EbayBrowseConnector:
             method="POST",
         )
         try:
-            with request.urlopen(req, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            data = self._request_json_with_retries(req)
         except Exception as exc:
             raise RuntimeError(f"eBay OAuth: ungültige API-Antwort: {exc}") from exc
 
