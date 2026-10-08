@@ -43,6 +43,12 @@ class TelegramNotifier(Notifier):
     def send(self, message: str) -> None:
         if not self.configured:
             raise NotificationError("Telegram ist nicht konfiguriert")
+        if not isinstance(message, str):
+            raise NotificationError("Telegram-Nachricht muss ein String sein")
+        if not message:
+            raise NotificationError("Telegram-Nachricht darf nicht leer sein")
+        if len(message) > 4096:
+            raise NotificationError("Telegram-Nachricht darf höchstens 4096 Zeichen enthalten")
 
         payload = parse.urlencode({"chat_id": self.chat_id, "text": message}).encode()
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
