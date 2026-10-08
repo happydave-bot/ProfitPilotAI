@@ -29,6 +29,38 @@ def test_runner_continues_when_notifier_fails():
     assert runner.run(max_cycles=2) == 2
 
 
+def test_runner_retries_failed_notification_on_next_cycle():
+    class BrokenOnceNotifier:
+        def __init__(self):
+            self.calls = 0
+
+        def send(self, message):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("network")
+
+    notifier = BrokenOnceNotifier()
+    runner = AutoRunner(lambda: [candidate()], notifier, sleep=lambda _: None)
+
+    assert len(runner.run_once()) == 1
+    assert len(runner.run_once()) == 1
+    assert notifier.calls == 2
+
+
+def test_runner_does_not_persist_failed_notification(tmp_path):
+    from core.state_store import JsonStateStore
+
+    class BrokenNotifier:
+        def send(self, message):
+            raise RuntimeError("network")
+
+    store = JsonStateStore(tmp_path / "state.json")
+    runner = AutoRunner(lambda: [candidate()], BrokenNotifier(), sleep=lambda _: None, state_store=store)
+
+    assert len(runner.run_once()) == 1
+    assert store.load() == set()
+
+
 def test_runner_rejects_invalid_interval():
     try:
         AutoRunner(lambda: [], MemoryNotifier(), config=RunnerConfig(interval_seconds=0))
