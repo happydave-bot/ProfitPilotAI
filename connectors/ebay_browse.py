@@ -164,6 +164,8 @@ class EbayBrowseConnector:
             except Exception as exc:
                 if not self._is_timeout_exception(exc) or retries >= self.config.max_retries:
                     raise
+                delay = min(0.5 * (2 ** retries), 5.0)
+                time.sleep(delay)
                 retries += 1
 
     def search(self, query: str) -> list[MarketListing]:
