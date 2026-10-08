@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+import math
 
 from connectors.market_data import MarketListing
 from core.deal_scanner import DealScanner, ScanCandidate
@@ -13,6 +13,14 @@ class LiveDealConfig:
     ebay_fee_percent: float = 12.9
     packaging_cost: float = 2.0
     max_ebay_results: int = 20
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.ebay_fee_percent) or not 0 <= self.ebay_fee_percent <= 100:
+            raise ValueError("eBay fee percent must be between 0 and 100")
+        if not math.isfinite(self.packaging_cost) or self.packaging_cost < 0:
+            raise ValueError("Packaging cost must be finite and non-negative")
+        if self.max_ebay_results <= 0:
+            raise ValueError("Maximum eBay results must be greater than zero")
 
 
 class LiveDealService:
