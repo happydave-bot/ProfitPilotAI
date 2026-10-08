@@ -60,19 +60,25 @@ class LiveDealService:
 
         for ebay_query in self._ebay_queries(listing.product):
             try:
-                ebay_listings = list(self.ebay.search(ebay_query))[: self.config.max_ebay_results]
+                raw_ebay_listings = list(self.ebay.search(ebay_query))
+                unique_ebay_listings: list[MarketListing] = []
+                seen_offer_urls: set[str] = set()
+                for ebay_listing in raw_ebay_listings:
+                    offer_url = str(ebay_listing.offer.url or "").strip()
+                    if offer_url and offer_url in seen_offer_urls:
+                        continue
+                    if offer_url:
+                        seen_offer_urls.add(offer_url)
+                    unique_ebay_listings.append(ebay_listing)
+                    if len(unique_ebay_listings) >= self.config.max_ebay_results:
+                        break
+                ebay_listings = unique_ebay_listings
             except Exception:
                 logger.exception("eBay-Suche fehlgeschlagen | Query=%s", ebay_query)
                 continue
 
             deals: list[ScanCandidate] = []
-            seen_offer_urls: set[str] = set()
             for index, ebay_listing in enumerate(ebay_listings):
-                offer_url = str(ebay_listing.offer.url or "").strip()
-                if offer_url and offer_url in seen_offer_urls:
-                    continue
-                if offer_url:
-                    seen_offer_urls.add(offer_url)
                 try:
                     ebay_candidates = [(ebay_listing.product, ebay_listing.offer)]
                     deals.extend(
