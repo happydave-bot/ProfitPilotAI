@@ -119,6 +119,28 @@ def test_applies_ebay_competition_killer_end_to_end():
     service = LiveDealService(FakeAmazon(), OversuppliedEbay())
     assert service.scan("Bosch Akkuschrauber") == []
 
+    
+def test_malformed_amazon_listing_does_not_block_valid_listings(caplog):
+    class BrokenListing:
+        @property
+        def product(self):
+            raise RuntimeError("malformed Amazon listing")
+
+    class MixedAmazon:
+        def search(self, query):
+            valid = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+            offer = MarketOffer(source="amazon", url="https://amazon.example/p", price=40.0)
+            return [BrokenListing(), MarketListing(valid, offer)]
+
+    service = LiveDealService(MixedAmazon(), FakeEbay())
+
+    with caplog.at_level(logging.ERROR):
+        results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].deal.profit > 0
+    assert "Amazon-Listing konnte nicht verarbeitet werden" in caplog.text
+
 
 def test_amazon_search_error_does_not_crash_scan(caplog):
     class BrokenAmazon:
