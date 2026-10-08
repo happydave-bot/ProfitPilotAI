@@ -80,9 +80,12 @@ class EbayBrowseConnector:
         )
         with request.urlopen(req, timeout=self.timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
+        if not isinstance(data, dict):
+            raise RuntimeError("eBay OAuth: ungültige JSON-Antwort")
         token = data.get("access_token")
-        if not token:
+        if not isinstance(token, str) or not token.strip():
             raise RuntimeError("eBay OAuth: kein Access Token erhalten")
+        token = token.strip()
         self._token = token
         return token
 
