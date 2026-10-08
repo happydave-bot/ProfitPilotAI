@@ -59,7 +59,7 @@ def test_ebay_search_does_not_retry_non_401_http_error(monkeypatch):
 
     assert connector._token is None
 
-    
+
 def test_ebay_search_retries_once_after_429(monkeypatch):
     connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
     connector._token = "token"
@@ -181,6 +181,7 @@ def test_search_request_uses_current_token_and_config(monkeypatch):
             marketplace_id="EBAY_DE",
             locale="de-DE",
             limit=7,
+            max_retries=2,
         )
     )
 
@@ -248,3 +249,63 @@ def test_ebay_search_does_not_retry_non_timeout_network_error(monkeypatch):
 
     assert len(calls) == 1
     assert connector._token is None
+
+
+def test_ebay_search_supports_two_transient_retries(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret", max_retries=2))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) <= 2:
+            raise HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert len(calls) == 3
+    assert connector._token == "token"
+
+
+def test_ebay_search_respects_zero_transient_retries(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret", max_retries=0))
+    connector._token = "token"
+    calls = []
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        raise HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    try:
+        connector.search("Bosch Akkuschrauber")
+    except RuntimeError as exc:
+        assert "HTTP Error 503" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")
+
+    assert len(calls) == 1
+
+
+def test_ebay_config_rejects_invalid_max_retries():
+    for value in (-1, 4, True, 1.5):
+        try:
+            EbayBrowseConfig("client", "secret", max_retries=value)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Expected ValueError")
+
+
+def test_ebay_config_reads_max_retries_from_env(monkeypatch):
+    monkeypatch.setenv("EBAY_CLIENT_ID", "client")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "secret")
+    monkeypatch.setenv("EBAY_MAX_RETRIES", "2")
+
+    config = EbayBrowseConfig.from_env()
+
+    assert config is not None
+    assert config.max_retries == 2
