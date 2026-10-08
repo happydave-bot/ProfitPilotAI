@@ -122,12 +122,17 @@ class EbayBrowseConnector:
             )
             shipping = 0.0
             shipping_options = item.get("shippingOptions") or []
-            if shipping_options:
-                shipping_cost = (shipping_options[0].get("shippingCost") or {}).get("value")
+            shipping_costs: list[float] = []
+            for option in shipping_options:
+                raw_cost = (option.get("shippingCost") or {}).get("value")
                 try:
-                    shipping = float(shipping_cost)
+                    cost = float(raw_cost)
                 except (TypeError, ValueError):
-                    shipping = 0.0
+                    continue
+                if cost >= 0:
+                    shipping_costs.append(cost)
+            if shipping_costs:
+                shipping = min(shipping_costs)
 
             offer = MarketOffer(
                 source="ebay",
