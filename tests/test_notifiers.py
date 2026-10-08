@@ -21,3 +21,9 @@ def test_telegram_uses_explicit_configuration_without_network_call(monkeypatch):
     assert notifier.configured
     assert notifier.token == "secret"
     assert notifier.chat_id == "123"
+
+
+def test_telegram_rejects_invalid_timeout():
+    for value in (0, -1, float("inf"), float("nan")):
+        with pytest.raises(ValueError, match="endlich und größer als 0"):
+            TelegramNotifier(token="secret", chat_id="123", timeout=value)
