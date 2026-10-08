@@ -66,6 +66,11 @@ class AutoRunner:
         return fresh
 
     def run(self, max_cycles: int | None = None) -> int:
+        if max_cycles is not None:
+            if isinstance(max_cycles, bool) or not isinstance(max_cycles, int):
+                raise ValueError("max_cycles muss ein nichtnegativer Integer oder None sein")
+            if max_cycles < 0:
+                raise ValueError("max_cycles muss ein nichtnegativer Integer oder None sein")
         cycles = 0
         while max_cycles is None or cycles < max_cycles:
             self.run_once()
