@@ -173,7 +173,7 @@ def test_runner_can_continue_after_transient_state_save_failure():
 
     assert len(runner.run_once()) == 1
     assert len(runner.run_once()) == 0
-    assert store.calls == 1
+    assert store.calls == 2
 
 
 def test_runner_rejects_invalid_interval():
@@ -265,3 +265,33 @@ def test_runner_continues_after_alert_check_failure():
 
     assert runner.run(max_cycles=2) == 2
     assert len(notifier.messages) == 1
+
+
+def test_runner_retries_state_save_when_no_new_alert_exists():
+    class FlakyStateStore:
+        def __init__(self):
+            self.calls = 0
+            self.saved = []
+
+        def load(self):
+            return set()
+
+        def save(self, seen):
+            self.calls += 1
+            if self.calls == 1:
+                raise OSError("temporary disk failure")
+            self.saved.append(set(seen))
+
+    store = FlakyStateStore()
+    runner = AutoRunner(
+        lambda: [candidate()],
+        MemoryNotifier(),
+        sleep=lambda _: None,
+        state_store=store,
+    )
+
+    assert len(runner.run_once()) == 1
+    assert len(runner.run_once()) == 0
+    assert store.calls == 2
+    assert len(store.saved) == 1
+    assert store.saved[0]
