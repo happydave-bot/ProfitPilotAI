@@ -20,19 +20,30 @@ class EbayBrowseConfig:
     sandbox: bool = False
     limit: int = 20
 
+    def __post_init__(self):
+        if isinstance(self.limit, bool) or not isinstance(self.limit, int):
+            raise ValueError("eBay search limit must be an integer")
+        if self.limit < 1 or self.limit > 200:
+            raise ValueError("eBay search limit must be between 1 and 200")
+
     @classmethod
     def from_env(cls) -> "EbayBrowseConfig | None":
         client_id = os.getenv("EBAY_CLIENT_ID", "")
         client_secret = os.getenv("EBAY_CLIENT_SECRET", "")
         if not client_id or not client_secret:
             return None
+        raw_limit = os.getenv("EBAY_SEARCH_LIMIT", "20").strip()
+        try:
+            limit = int(raw_limit)
+        except ValueError as exc:
+            raise ValueError("EBAY_SEARCH_LIMIT must be an integer") from exc
         return cls(
             client_id=client_id,
             client_secret=client_secret,
             marketplace_id=os.getenv("EBAY_MARKETPLACE_ID", "EBAY_DE"),
             locale=os.getenv("EBAY_LOCALE", "de-DE"),
             sandbox=os.getenv("EBAY_SANDBOX", "0").lower() in {"1", "true", "yes"},
-            limit=max(1, min(200, int(os.getenv("EBAY_SEARCH_LIMIT", "20")))),
+            limit=limit,
         )
 
 
