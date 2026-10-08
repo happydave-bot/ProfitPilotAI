@@ -64,6 +64,30 @@ def test_telegram_rejects_api_error_response(monkeypatch):
         notifier.send("test")
 
 
+@pytest.mark.parametrize("payload", [b"[]", b"null", b'"text"'])
+def test_telegram_rejects_non_object_json_response(monkeypatch, payload):
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return payload
+
+    def fake_urlopen(*args, **kwargs):
+        return FakeResponse()
+
+    monkeypatch.setattr("core.notifiers.request.urlopen", fake_urlopen)
+    notifier = TelegramNotifier(token="secret", chat_id="123")
+
+    with pytest.raises(NotificationError, match="Ungültige Telegram-Antwort"):
+        notifier.send("test")
+
+
 def test_telegram_accepts_success_response(monkeypatch):
     class FakeResponse:
         status = 200
