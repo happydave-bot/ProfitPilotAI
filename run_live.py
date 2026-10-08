@@ -118,7 +118,7 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
 def persist_runner_state(runner: AutoRunner, state_path: str) -> None:
     """Persist final alert state without turning shutdown into a crash."""
     try:
-        persist_runner_state(runner, state_path)
+        JsonStateStore(state_path).save(runner.monitor.seen)
     except Exception:
         logging.exception("Alert-Status konnte beim Beenden nicht gespeichert werden")
 
