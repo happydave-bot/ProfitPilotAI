@@ -109,13 +109,9 @@ class EbayBrowseConnector:
             return 0.0
         return min(delay, 5.0)
 
-    def search(self, query: str) -> list[MarketListing]:
-        query = query.strip()
-        if not query:
-            return []
-        token = self._token or self._access_token()
+    def _search_request(self, query: str, token: str) -> request.Request:
         params = parse.urlencode({"q": query, "limit": self.config.limit})
-        req = request.Request(
+        return request.Request(
             f"{self.base_url}/buy/browse/v1/item_summary/search?{params}",
             headers={
                 "Authorization": f"Bearer {token}",
@@ -124,6 +120,13 @@ class EbayBrowseConnector:
             },
             method="GET",
         )
+
+    def search(self, query: str) -> list[MarketListing]:
+        query = query.strip()
+        if not query:
+            return []
+        token = self._token or self._access_token()
+        req = self._search_request(query, token)
         try:
             with request.urlopen(req, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode("utf-8"))
@@ -131,15 +134,7 @@ class EbayBrowseConnector:
             if exc.code == 401 and self._token is not None:
                 self._token = None
                 token = self._access_token()
-                req = request.Request(
-                    f"{self.base_url}/buy/browse/v1/item_summary/search?{params}",
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "Accept-Language": self.config.locale,
-                        "X-EBAY-C-MARKETPLACE-ID": self.config.marketplace_id,
-                    },
-                    method="GET",
-                )
+                req = self._search_request(query, token)
                 try:
                     with request.urlopen(req, timeout=self.timeout) as response:
                         data = json.loads(response.read().decode("utf-8"))
