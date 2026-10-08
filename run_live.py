@@ -143,7 +143,8 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
     if args.check:
-        result = validate_live_environment()
+        check_dry_run = args.dry_run or os.getenv("PROFITPILOT_DRY_RUN", "").lower() in {"1", "true", "yes"}
+        result = validate_live_environment(dry_run=check_dry_run)
         print(result.summary())
         raise SystemExit(0 if result.ok else 2)
 
