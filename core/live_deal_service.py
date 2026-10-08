@@ -80,6 +80,11 @@ class LiveDealService:
             return []
 
         candidates: list[ScanCandidate] = []
-        for listing in amazon_listings:
-            candidates.extend(self._scan_ebay_candidates(listing))
+        for index, listing in enumerate(amazon_listings):
+            try:
+                candidates.extend(self._scan_ebay_candidates(listing))
+            except Exception:
+                logger.exception("Amazon-Listing konnte nicht verarbeitet werden | Index=%s", index)
+                continue
+
         return sorted(candidates, key=lambda item: (item.deal.profit, item.deal.roi), reverse=True)
