@@ -42,3 +42,36 @@ def test_ebay_listing_product_keeps_brand_and_mpn():
     assert listing.product.brand == "Bosch"
     assert listing.product.model == "06019N0E2B"
     assert listing.product.ean == "4000000000001"
+
+
+def test_check_mode_accepts_explicit_dry_run(monkeypatch):
+    from run_live import main
+
+    for name in (
+        "AMAZON_CREATORS_CLIENT_ID",
+        "AMAZON_CREATORS_CLIENT_SECRET",
+        "AMAZON_PARTNER_TAG",
+        "EBAY_CLIENT_ID",
+        "EBAY_CLIENT_SECRET",
+        "PROFITPILOT_QUERY",
+        "PROFITPILOT_QUERIES",
+        "PROFITPILOT_TELEGRAM_TOKEN",
+        "PROFITPILOT_TELEGRAM_CHAT_ID",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    monkeypatch.setenv("AMAZON_CREATORS_CLIENT_ID", "amazon-id")
+    monkeypatch.setenv("AMAZON_CREATORS_CLIENT_SECRET", "amazon-secret")
+    monkeypatch.setenv("AMAZON_PARTNER_TAG", "tag-20")
+    monkeypatch.setenv("EBAY_CLIENT_ID", "ebay-id")
+    monkeypatch.setenv("EBAY_CLIENT_SECRET", "ebay-secret")
+    monkeypatch.setenv("PROFITPILOT_QUERY", "Bosch Akkuschrauber")
+
+    monkeypatch.setattr("sys.argv", ["run_live.py", "--check", "--dry-run"])
+
+    try:
+        main()
+    except SystemExit as exc:
+        assert exc.code == 0
+    else:
+        raise AssertionError("main() hätte mit SystemExit enden müssen")
