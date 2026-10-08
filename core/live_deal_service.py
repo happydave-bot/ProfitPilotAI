@@ -73,7 +73,12 @@ class LiveDealService:
         if not query or self.amazon is None:
             return []
 
-        amazon_listings = list(self.amazon.search(query))
+        try:
+            amazon_listings = list(self.amazon.search(query))
+        except Exception:
+            logger.exception("Amazon-Suche fehlgeschlagen | Query=%s", query)
+            return []
+
         candidates: list[ScanCandidate] = []
         for listing in amazon_listings:
             candidates.extend(self._scan_ebay_candidates(listing))
