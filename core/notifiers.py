@@ -11,7 +11,7 @@ class NotificationError(RuntimeError):
     pass
 
 
-class Notifier:
+class Notifier(ABC):
     def send(self, message: str) -> None:
         raise NotImplementedError
 
@@ -61,6 +61,8 @@ class TelegramNotifier(Notifier):
                     body = json.loads(response.read().decode("utf-8"))
                 except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                     raise NotificationError("Ungültige Telegram-Antwort") from exc
+                if not isinstance(body, dict):
+                    raise NotificationError("Ungültige Telegram-Antwort")
                 if body.get("ok") is not True:
                     raise NotificationError("Telegram hat den Versand abgelehnt")
         except Exception as exc:
