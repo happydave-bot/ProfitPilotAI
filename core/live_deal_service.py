@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import math
 
 from connectors.market_data import MarketListing
 from core.deal_scanner import DealScanner, ScanCandidate
 from core.models import MarketOffer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,7 +50,12 @@ class LiveDealService:
 
     def _scan_ebay_candidates(self, listing: MarketListing) -> list[ScanCandidate]:
         for ebay_query in self._ebay_queries(listing.product):
-            ebay_listings = list(self.ebay.search(ebay_query))[: self.config.max_ebay_results]
+            try:
+                ebay_listings = list(self.ebay.search(ebay_query))[: self.config.max_ebay_results]
+            except Exception:
+                logger.exception("eBay-Suche fehlgeschlagen | Query=%s", ebay_query)
+                continue
+
             ebay_candidates = [(item.product, item.offer) for item in ebay_listings]
             deals = DealScanner.scan(
                 listing.product,
