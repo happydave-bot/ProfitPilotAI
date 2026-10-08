@@ -78,3 +78,38 @@ def test_live_service_falls_back_to_title_when_identifier_finds_no_deal():
 
     assert len(results) == 1
     assert ebay.queries == ["123", "Bosch Akkuschrauber 18V"]
+
+
+def test_live_service_includes_ebay_shipping_in_real_profit():
+    class ShippingEbay(FakeEbay):
+        def search(self, query):
+            product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+            offer = MarketOffer(
+                source="ebay",
+                url="https://ebay.example/p",
+                price=85.0,
+                shipping=10.0,
+            )
+            return [MarketListing(product, offer)]
+
+    service = LiveDealService(FakeAmazon(), ShippingEbay())
+    results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].deal.profit == 32.05
+
+
+def test_live_service_applies_ebay_competition_killer_end_to_end():
+    class OversuppliedEbay(FakeEbay):
+        def search(self, query):
+            product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+            offer = MarketOffer(
+                source="ebay",
+                url="https://ebay.example/p",
+                price=85.0,
+                competition_count=26,
+            )
+            return [MarketListing(product, offer)]
+
+    service = LiveDealService(FakeAmazon(), OversuppliedEbay())
+    assert service.scan("Bosch Akkuschrauber") == []
