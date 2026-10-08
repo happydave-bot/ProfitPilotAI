@@ -20,12 +20,17 @@ class EbayBrowseConfig:
     locale: str = "de-DE"
     sandbox: bool = False
     limit: int = 20
+    max_retries: int = 1
 
     def __post_init__(self):
         if isinstance(self.limit, bool) or not isinstance(self.limit, int):
             raise ValueError("eBay search limit must be an integer")
         if self.limit < 1 or self.limit > 200:
             raise ValueError("eBay search limit must be between 1 and 200")
+        if isinstance(self.max_retries, bool) or not isinstance(self.max_retries, int):
+            raise ValueError("eBay max retries must be an integer")
+        if self.max_retries < 0 or self.max_retries > 3:
+            raise ValueError("eBay max retries must be between 0 and 3")
 
     @classmethod
     def from_env(cls) -> "EbayBrowseConfig | None":
@@ -38,6 +43,11 @@ class EbayBrowseConfig:
             limit = int(raw_limit)
         except ValueError as exc:
             raise ValueError("EBAY_SEARCH_LIMIT must be an integer") from exc
+        raw_max_retries = os.getenv("EBAY_MAX_RETRIES", "1").strip()
+        try:
+            max_retries = int(raw_max_retries)
+        except ValueError as exc:
+            raise ValueError("EBAY_MAX_RETRIES must be an integer") from exc
         return cls(
             client_id=client_id,
             client_secret=client_secret,
@@ -45,6 +55,7 @@ class EbayBrowseConfig:
             locale=os.getenv("EBAY_LOCALE", "de-DE"),
             sandbox=os.getenv("EBAY_SANDBOX", "0").lower() in {"1", "true", "yes"},
             limit=limit,
+            max_retries=max_retries,
         )
 
 
@@ -127,6 +138,26 @@ class EbayBrowseConnector:
             method="GET",
         )
 
+    def _request_json_with_retries(self, req: request.Request) -> dict:
+        retries = 0
+        while True:
+            try:
+                with request.urlopen(req, timeout=self.timeout) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                return data
+            except error.HTTPError as exc:
+                transient = exc.code == 408 or exc.code == 429 or 500 <= exc.code <= 599
+                if not transient or retries >= self.config.max_retries:
+                    raise
+                delay = self._retry_after_seconds(exc)
+                if delay:
+                    time.sleep(delay)
+                retries += 1
+            except Exception as exc:
+                if not self._is_timeout_exception(exc) or retries >= self.config.max_retries:
+                    raise
+                retries += 1
+
     def search(self, query: str) -> list[MarketListing]:
         query = query.strip()
         if not query:
@@ -134,26 +165,14 @@ class EbayBrowseConnector:
         token = self._token or self._access_token()
         req = self._search_request(query, token)
         try:
-            with request.urlopen(req, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            data = self._request_json_with_retries(req)
         except error.HTTPError as exc:
             if exc.code == 401 and self._token is not None:
                 self._token = None
                 token = self._access_token()
                 req = self._search_request(query, token)
                 try:
-                    with request.urlopen(req, timeout=self.timeout) as response:
-                        data = json.loads(response.read().decode("utf-8"))
-                except Exception as retry_exc:
-                    self._token = None
-                    raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
-            elif exc.code == 408 or exc.code == 429 or 500 <= exc.code <= 599:
-                delay = self._retry_after_seconds(exc)
-                if delay:
-                    time.sleep(delay)
-                try:
-                    with request.urlopen(req, timeout=self.timeout) as response:
-                        data = json.loads(response.read().decode("utf-8"))
+                    data = self._request_json_with_retries(req)
                 except Exception as retry_exc:
                     self._token = None
                     raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
@@ -161,16 +180,8 @@ class EbayBrowseConnector:
                 self._token = None
                 raise RuntimeError(f"eBay Browse API: {exc}") from exc
         except Exception as exc:
-            if self._is_timeout_exception(exc):
-                try:
-                    with request.urlopen(req, timeout=self.timeout) as response:
-                        data = json.loads(response.read().decode("utf-8"))
-                except Exception as retry_exc:
-                    self._token = None
-                    raise RuntimeError(f"eBay Browse API: {retry_exc}") from retry_exc
-            else:
-                self._token = None
-                raise RuntimeError(f"eBay Browse API: {exc}") from exc
+            self._token = None
+            raise RuntimeError(f"eBay Browse API: {exc}") from exc
 
         if not isinstance(data, dict):
             raise RuntimeError("eBay Browse API: ungültige JSON-Antwort")
