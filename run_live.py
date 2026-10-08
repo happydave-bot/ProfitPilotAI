@@ -96,7 +96,6 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
     state_path = os.getenv("PROFITPILOT_STATE_FILE", "data/alert_state.json")
     store = JsonStateStore(state_path)
     monitor = AlertMonitor()
-    monitor.seen.update(store.load())
 
     def scan():
         results = []
@@ -114,6 +113,14 @@ def build_live_runner(dry_run: bool = False) -> AutoRunner | None:
         config=runner_config,
         state_store=store,
     )
+
+
+def persist_runner_state(runner: AutoRunner, state_path: str) -> None:
+    """Persist final alert state without turning shutdown into a crash."""
+    try:
+        persist_runner_state(runner, state_path)
+    except Exception:
+        logging.exception("Alert-Status konnte beim Beenden nicht gespeichert werden")
 
 
 def run_ebay_connectivity_test() -> int:
