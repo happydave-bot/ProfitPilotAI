@@ -20,6 +20,37 @@ def test_runner_alerts_once_across_cycles():
     assert len(notifier.messages) == 1
 
 
+def test_runner_returns_no_alerts_when_scan_fails():
+    calls = 0
+
+    def broken_scan():
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("scan failed")
+
+    runner = AutoRunner(broken_scan, MemoryNotifier(), sleep=lambda _: None)
+
+    assert runner.run_once() == []
+    assert calls == 1
+
+
+def test_runner_continues_after_scan_failure():
+    calls = 0
+
+    def flaky_scan():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("temporary failure")
+        return [candidate()]
+
+    notifier = MemoryNotifier()
+    runner = AutoRunner(flaky_scan, notifier, sleep=lambda _: None)
+
+    assert runner.run(max_cycles=2) == 2
+    assert len(notifier.messages) == 1
+
+
 def test_runner_continues_when_notifier_fails():
     class BrokenNotifier:
         def send(self, message):
