@@ -78,3 +78,33 @@ def test_ebay_search_uses_lowest_valid_shipping_option(monkeypatch):
 
     assert len(results) == 1
     assert results[0].offer.shipping == 0.0
+
+
+def test_ebay_search_skips_listing_without_actionable_url(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [
+                {
+                    "title": "Bosch GSR 18V",
+                    "price": {"value": "79.99"},
+                },
+                {
+                    "title": "Bosch GSR 18V",
+                    "price": {"value": "84.99"},
+                    "itemWebUrl": "https://ebay.example/item/2",
+                },
+            ]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.url == "https://ebay.example/item/2"
