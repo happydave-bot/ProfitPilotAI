@@ -108,6 +108,8 @@ class EbayBrowseConnector:
                 price = float((item.get("price") or {})["value"])
             except (KeyError, TypeError, ValueError):
                 continue
+            if price <= 0:
+                continue
             title = str(item.get("title") or "").strip()
             item_url = str(item.get("itemWebUrl") or "").strip()
             if not title or not item_url:
