@@ -113,3 +113,58 @@ def test_ebay_search_fails_after_transient_error_retry(monkeypatch):
         raise AssertionError("Expected RuntimeError")
 
     assert connector._token is None
+
+
+def test_ebay_search_honors_retry_after_header(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    delays = []
+    calls = []
+
+    def fake_sleep(delay):
+        delays.append(delay)
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.headers.get("Authorization"))
+        if len(calls) == 1:
+            raise HTTPError(
+                req.full_url,
+                429,
+                "Too Many Requests",
+                {"Retry-After": "2.5"},
+                None,
+            )
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.time.sleep", fake_sleep)
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert delays == [2.5]
+    assert len(calls) == 2
+
+
+def test_ebay_search_ignores_invalid_retry_after_header(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+    delays = []
+
+    def fake_sleep(delay):
+        delays.append(delay)
+
+    def fake_urlopen(req, timeout):
+        if not delays:
+            raise HTTPError(
+                req.full_url,
+                503,
+                "Service Unavailable",
+                {"Retry-After": "not-a-number"},
+                None,
+            )
+        return Response({"itemSummaries": []})
+
+    monkeypatch.setattr("connectors.ebay_browse.time.sleep", fake_sleep)
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", fake_urlopen)
+
+    assert connector.search("Bosch Akkuschrauber") == []
+    assert delays == []
