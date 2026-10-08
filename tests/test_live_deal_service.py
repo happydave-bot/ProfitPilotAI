@@ -133,6 +133,26 @@ def test_deduplicates_ebay_urls_ignoring_host_case_and_fragment():
     assert len(results) == 1
 
 
+def test_malformed_ebay_url_does_not_crash_scan():
+    product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
+
+    class MalformedUrlEbay:
+        def search(self, query):
+            return [
+                MarketListing(
+                    product,
+                    MarketOffer("ebay", "https://ebay.example:bad-port/item/123", 85.0),
+                ),
+            ]
+
+    service = LiveDealService(FakeAmazon(), MalformedUrlEbay())
+
+    results = service.scan("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].ebay.url == "https://ebay.example:bad-port/item/123"
+
+
 def test_deduplicates_before_ebay_result_limit():
     product = Product(title="Bosch Akkuschrauber 18V", brand="Bosch", ean="123")
 
