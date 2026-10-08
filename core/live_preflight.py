@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 
@@ -61,14 +62,18 @@ def validate_live_environment(dry_run: bool | None = None) -> LivePreflight:
 
     try:
         fee = float(os.getenv("PROFITPILOT_EBAY_FEE_PERCENT", "12.9"))
-        if not 0 <= fee < 100:
+        if not math.isfinite(fee):
+            missing.append("PROFITPILOT_EBAY_FEE_PERCENT (endlich)")
+        elif not 0 <= fee < 100:
             warnings.append("PROFITPILOT_EBAY_FEE_PERCENT liegt außerhalb 0-99.")
     except ValueError:
         missing.append("PROFITPILOT_EBAY_FEE_PERCENT (Zahl)")
 
     try:
         packaging = float(os.getenv("PROFITPILOT_PACKAGING_COST", "2.0"))
-        if packaging < 0:
+        if not math.isfinite(packaging):
+            missing.append("PROFITPILOT_PACKAGING_COST (endlich)")
+        elif packaging < 0:
             warnings.append("PROFITPILOT_PACKAGING_COST ist negativ.")
     except ValueError:
         missing.append("PROFITPILOT_PACKAGING_COST (Zahl)")
