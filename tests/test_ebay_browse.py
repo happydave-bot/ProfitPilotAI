@@ -275,3 +275,43 @@ def test_ebay_search_keeps_listing_when_buying_options_are_missing(monkeypatch):
     results = connector.search("Bosch Akkuschrauber")
 
     assert len(results) == 1
+
+
+def test_ebay_search_skips_non_finite_price_and_shipping(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({"itemSummaries": [
+                {
+                    "title": "Ungültiger Preis",
+                    "price": {"value": "Infinity"},
+                    "itemWebUrl": "https://ebay.example/infinite-price",
+                    "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+                },
+                {
+                    "title": "Ungültiger Versand",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://ebay.example/infinite-shipping",
+                    "shippingOptions": [{"shippingCost": {"value": "Infinity"}}],
+                },
+                {
+                    "title": "Gültiges Angebot",
+                    "price": {"value": "84.99"},
+                    "itemWebUrl": "https://ebay.example/valid",
+                    "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+                },
+            ]}).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.price == 84.99
+    assert results[0].offer.shipping == 4.99
