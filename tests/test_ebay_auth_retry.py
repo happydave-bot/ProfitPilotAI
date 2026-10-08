@@ -171,3 +171,22 @@ def test_ebay_search_ignores_invalid_retry_after_header(monkeypatch):
 
     assert connector.search("Bosch Akkuschrauber") == []
     assert delays == []
+
+
+def test_search_request_uses_current_token_and_config(monkeypatch):
+    connector = EbayBrowseConnector(
+        EbayBrowseConfig(
+            "client",
+            "secret",
+            marketplace_id="EBAY_DE",
+            locale="de-DE",
+            limit=7,
+        )
+    )
+
+    req = connector._search_request("Bosch Akkuschrauber", "fresh-token")
+
+    assert req.full_url.endswith("/buy/browse/v1/item_summary/search?q=Bosch+Akkuschrauber&limit=7")
+    assert req.headers["Authorization"] == "Bearer fresh-token"
+    assert req.headers["Accept-language"] == "de-DE"
+    assert req.headers["X-ebay-c-marketplace-id"] == "EBAY_DE"
