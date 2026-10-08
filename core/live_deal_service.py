@@ -38,6 +38,10 @@ class LiveDealService:
     def amazon_configured(self) -> bool:
         return self.amazon is not None
 
+    @property
+    def ebay_configured(self) -> bool:
+        return self.ebay is not None
+
     @staticmethod
     def _ebay_queries(product) -> tuple[str, ...]:
         values = [product.ean, product.model, product.title]
@@ -49,6 +53,9 @@ class LiveDealService:
         return tuple(queries)
 
     def _scan_ebay_candidates(self, listing: MarketListing) -> list[ScanCandidate]:
+        if not self.ebay_configured:
+            return []
+
         for ebay_query in self._ebay_queries(listing.product):
             try:
                 ebay_listings = list(self.ebay.search(ebay_query))[: self.config.max_ebay_results]
@@ -83,7 +90,7 @@ class LiveDealService:
 
     def scan(self, query: str) -> list[ScanCandidate]:
         query = query.strip()
-        if not query or self.amazon is None:
+        if not query or self.amazon is None or self.ebay is None:
             return []
 
         try:
