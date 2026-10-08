@@ -53,14 +53,17 @@ class LiveDealService:
         parsed = urlsplit(normalized)
         if not parsed.scheme or not parsed.netloc:
             return normalized
-        hostname = (parsed.hostname or "").lower()
-        userinfo = ""
-        if parsed.username is not None:
-            userinfo = parsed.username
-            if parsed.password is not None:
-                userinfo += f":{parsed.password}"
-            userinfo += "@"
-        port = f":{parsed.port}" if parsed.port is not None else ""
+        try:
+            hostname = (parsed.hostname or "").lower()
+            userinfo = ""
+            if parsed.username is not None:
+                userinfo = parsed.username
+                if parsed.password is not None:
+                    userinfo += f":{parsed.password}"
+                userinfo += "@"
+            port = f":{parsed.port}" if parsed.port is not None else ""
+        except ValueError:
+            return normalized
         netloc = f"{userinfo}{hostname}{port}"
         return urlunsplit((parsed.scheme.lower(), netloc, parsed.path, parsed.query, ""))
 
