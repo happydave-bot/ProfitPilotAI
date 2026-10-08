@@ -56,7 +56,10 @@ class AutoRunner:
                 self.monitor.seen.discard(self.monitor.fingerprint(candidate))
                 logger.exception("Benachrichtigung konnte nicht gesendet werden")
         if fresh and self.state_store is not None:
-            self.state_store.save(self.monitor.seen)
+            try:
+                self.state_store.save(self.monitor.seen)
+            except Exception:
+                logger.exception("Alert-Status konnte nicht gespeichert werden")
         return fresh
 
     def run(self, max_cycles: int | None = None) -> int:
