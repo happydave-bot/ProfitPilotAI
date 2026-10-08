@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 from dataclasses import dataclass
 from typing import Callable, Iterable
@@ -36,8 +37,8 @@ class AutoRunner:
         self.config = config or RunnerConfig()
         self.sleep = sleep
         self.state_store = state_store
-        if self.config.interval_seconds <= 0:
-            raise ValueError("interval_seconds muss größer als 0 sein")
+        if not math.isfinite(self.config.interval_seconds) or self.config.interval_seconds <= 0:
+            raise ValueError("interval_seconds muss endlich und größer als 0 sein")
         if self.state_store is not None:
             self.monitor.seen.update(self.state_store.load())
 
