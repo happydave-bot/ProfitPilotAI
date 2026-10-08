@@ -23,6 +23,7 @@ def test_build_live_runner_does_not_eagerly_load_state(monkeypatch):
     monkeypatch.setattr(run_live, "JsonStateStore", BrokenStateStore)
     monkeypatch.setattr(run_live, "AutoRunner", FakeAutoRunner)
     monkeypatch.setattr(run_live, "_read_queries", lambda: ["test"])
+    monkeypatch.setenv("PROFITPILOT_EBAY_ONLY", "true")
     monkeypatch.setattr(run_live, "TelegramNotifier", lambda: type("N", (), {"configured": True})())
     monkeypatch.setattr(run_live, "AmazonCreatorsConfig", type("A", (), {"from_env": staticmethod(lambda: None)}) )
     monkeypatch.setattr(run_live, "EbayBrowseConfig", type("E", (), {"from_env": staticmethod(lambda: object())}) )
