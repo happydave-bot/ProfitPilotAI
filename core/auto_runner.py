@@ -37,6 +37,7 @@ class AutoRunner:
         self.config = config or RunnerConfig()
         self.sleep = sleep
         self.state_store = state_store
+        self._state_dirty = False
         if not math.isfinite(self.config.interval_seconds) or self.config.interval_seconds <= 0:
             raise ValueError("interval_seconds muss endlich und größer als 0 sein")
         if self.state_store is not None:
@@ -63,10 +64,14 @@ class AutoRunner:
                 self.monitor.seen.discard(self.monitor.fingerprint(candidate))
                 logger.exception("Benachrichtigung konnte nicht gesendet werden")
         if fresh and self.state_store is not None:
+            self._state_dirty = True
+        if self.state_store is not None and self._state_dirty:
             try:
                 self.state_store.save(self.monitor.seen)
             except Exception:
                 logger.exception("Alert-Status konnte nicht gespeichert werden")
+            else:
+                self._state_dirty = False
         return fresh
 
     def run(self, max_cycles: int | None = None) -> int:
