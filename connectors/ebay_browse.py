@@ -112,6 +112,15 @@ class EbayBrowseConnector:
                 continue
             title = str(item.get("title") or "").strip()
             item_url = str(item.get("itemWebUrl") or "").strip()
+            buying_options = item.get("buyingOptions")
+            if isinstance(buying_options, list) and buying_options:
+                normalized_buying_options = {
+                    str(option).strip().upper()
+                    for option in buying_options
+                    if str(option).strip()
+                }
+                if normalized_buying_options and "FIXED_PRICE" not in normalized_buying_options:
+                    continue
             if not title or not item_url:
                 continue
             gtin = item.get("gtin")
