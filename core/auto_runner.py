@@ -43,7 +43,11 @@ class AutoRunner:
             self.monitor.seen.update(self.state_store.load())
 
     def run_once(self) -> list[ScanCandidate]:
-        candidates = list(self.scan())
+        try:
+            candidates = list(self.scan())
+        except Exception:
+            logger.exception("Scan konnte nicht ausgeführt werden")
+            return []
         fresh = self.monitor.check(candidates)
         for candidate in fresh:
             try:
