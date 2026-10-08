@@ -90,6 +90,8 @@ class AmazonCreatorsConnector:
             "resources": [
                 "itemInfo.title",
                 "itemInfo.byLineInfo",
+                "itemInfo.externalIds",
+                "itemInfo.manufactureInfo",
                 "offersV2.listings.price",
                 "offersV2.listings.merchantInfo",
             ],
@@ -116,6 +118,19 @@ class AmazonCreatorsConnector:
             asin = item.get("asin")
             if not title or not asin:
                 continue
+            item_info = item.get("itemInfo") or {}
+            byline = item_info.get("byLineInfo") or {}
+            brand_value = (byline.get("brand") or {}).get("displayValue")
+            brand = str(brand_value or "").strip()
+
+            external_ids = item_info.get("externalIds") or {}
+            eans = (external_ids.get("eans") or {}).get("displayValues") or []
+            ean = str(eans[0]).strip() if eans else None
+
+            manufacture = item_info.get("manufactureInfo") or {}
+            model_value = (manufacture.get("model") or {}).get("displayValue")
+            part_number_value = (manufacture.get("itemPartNumber") or {}).get("displayValue")
+            model = str(model_value or part_number_value or "").strip() or None
             listings = ((item.get("offersV2") or {}).get("listings") or [])
             priced = [entry for entry in listings if ((entry.get("price") or {}).get("money") or {}).get("amount") is not None]
             if not priced:
@@ -127,7 +142,8 @@ class AmazonCreatorsConnector:
             except (KeyError, TypeError, ValueError):
                 continue
             merchant = (first.get("merchantInfo") or {}).get("name") or ""
-            product = Product(title=title, brand=None, asin=str(asin))
-            offer = MarketOffer(source="amazon", url=f"https://www.amazon.de/dp/{asin}", price=price, seller=str(merchant))
+            product = Product(title=title, brand=brand, asin=str(asin), ean=ean, model=model)
+            detail_url = str(item.get("detailPageURL") or "").strip()
+            offer = MarketOffer(source="amazon", url=detail_url or f"https://www.amazon.de/dp/{asin}", price=price, seller=str(merchant))
             results.append(MarketListing(product=product, offer=offer))
         return results
