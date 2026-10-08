@@ -347,3 +347,31 @@ def test_ebay_config_rejects_invalid_environment_limit(monkeypatch):
         assert str(exc) == "EBAY_SEARCH_LIMIT must be an integer"
     else:
         raise AssertionError("Expected ValueError")
+
+ 
+def test_ebay_search_rejects_invalid_competition_count(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+    connector._token = "token"
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return json.dumps({
+                "total": -5,
+                "itemSummaries": [{
+                    "title": "Bosch GSR",
+                    "price": {"value": "79.99"},
+                    "itemWebUrl": "https://ebay.example/item/1",
+                    "shippingOptions": [{"shippingCost": {"value": "4.99"}}],
+                }],
+            }).encode()
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    results = connector.search("Bosch Akkuschrauber")
+
+    assert len(results) == 1
+    assert results[0].offer.competition_count is None
