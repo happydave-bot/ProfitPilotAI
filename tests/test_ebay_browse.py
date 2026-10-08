@@ -1,3 +1,4 @@
+import pytest
 import json
 
 from connectors.ebay_browse import EbayBrowseConfig, EbayBrowseConnector
@@ -11,6 +12,23 @@ def test_ebay_config_reads_environment(monkeypatch):
     assert config is not None
     assert config.client_id == "client"
     assert config.limit == 7
+
+
+def test_ebay_oauth_wraps_malformed_json_response(monkeypatch):
+    connector = EbayBrowseConnector(EbayBrowseConfig("client", "secret"))
+
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self):
+            return b"{not-json"
+
+    monkeypatch.setattr("connectors.ebay_browse.request.urlopen", lambda req, timeout: Response())
+
+    with pytest.raises(RuntimeError, match="eBay OAuth: ungültige API-Antwort"):
+        connector._access_token()
 
 
 def test_ebay_oauth_rejects_non_object_response(monkeypatch):
